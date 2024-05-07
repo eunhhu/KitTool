@@ -29,8 +29,18 @@ let prc:ProcessObject|null = null;
 app.whenReady().then(() => {
   const main = createWindow("main");
 
+  ipcMain.on('init', () => {
+    prc = null;
+  })
+
   ipcMain.on('getProcesses', () => {
-    main.webContents.send('getProcesses', getProcesses())
+    main.webContents.send('getProcesses', getProcesses().filter(v => {
+      if(v.szExeFile.split('.')[1]){
+        return v.szExeFile.split('.')[1] == 'exe'
+      } else {
+        return false
+      }
+    }))
   })
 
   ipcMain.on('attach', (e, pid) => {

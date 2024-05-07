@@ -13,9 +13,9 @@
             <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-compare">Compare</button>
         </div>
         <div class="w-full h-full bg-neutral-200 rounded-md lg:rounded-lg flex flex-row justify-center items-center p-2 lg:p-3 pt-6 lg:pt-8 gap-2 lg:gap-3">
-            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 lg:gap-2">
+            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 lg:gap-2 select-none">
                 <div class="w-full flex flex-row justify-around items-center text-center text-xs font-mono">
-                    <div>&nbsp;&nbsp;&nbsp;ADDRESS</div>
+                    <div class="ml-8">ADDRESS</div>
                     <div>00</div>
                     <div>01</div>
                     <div>02</div>
@@ -32,11 +32,9 @@
                     <div>0D</div>
                     <div>0E</div>
                     <div>0F</div>
-                    <div>0123456789ABCDEF</div>
+                    <div style="letter-spacing: 0.025rem;">0123456789ABCDEF</div>
                 </div>
-                <div class="w-full h-full bg-white overflow-hidden rounded-md lg:rounded-lg" id="viewer">
-                    <div class="w-full flex flex-row justify-around items-center text-center text-xs font-mono"><div class="select-none">337F9EA02B</div><div>00</div><div>00</div><div>00</div><div>00</div><div>DB</div><div>78</div><div>00</div><div>00</div><div>FF</div><div>FF</div><div>FF</div><div>F9</div><div>E8</div><div>D0</div><div>3A</div><div>94</div><div class="select-none">.....+S.[dst...4</div></div>
-                </div>
+                <div class="w-full h-full bg-white overflow-hidden rounded-md lg:rounded-lg" id="viewer"></div>
             </div>
             <div class="w-[40%] h-full flex flex-col justify-start items-center text-sm gap-1.5 lg:gap-3">
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full">
@@ -49,7 +47,7 @@
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Address</div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
                     <input type="text" name="" id="address" class="p-1 rounded-md w-full" placeholder="Address">
-                    <button class="p-1 rounded-md pl-3 pr-3" id="goto-addr">Go</button>
+                    <button class="p-1 rounded-md pl-3 pr-3" id="goto-address">Go</button>
                 </div>
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Offset</div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
