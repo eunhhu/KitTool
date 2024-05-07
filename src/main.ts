@@ -116,6 +116,8 @@ on('attached', (e, prc:ProcessObject) => {
     states["curAddress"] = prc.modBaseAddr;
     states["curOffset"] = 0;
     states["loadLine"] = true;
+    states["selectedBuffer"] = [null, 1];
+    states["selectedAddress"] = null;
 })
 
 function loadLine(line:number = Math.floor($_('viewer').getClientRects().item(0).height/12)){
@@ -134,12 +136,14 @@ on('loadLine', (e, buffers:string[], modBase:number) => {
         _a.id = `${(modBase + i * 0x10).toString(16).toUpperCase()}`
         if(states["selectedAddress"] == _a.id) _a.classList.add('selected');
         _el.appendChild(_a);
+        const _bs = create('div', "", "bytes");
         buffer.split(' ').forEach((v, j) => {
             const _b = create('div', v, "each-byte");
             _b.id = `${(modBase + i * 0x10 + j).toString(16).toUpperCase()}`;
             if(states["selectedBuffer"][0] == _b.id) _b.classList.add('selected');
-            _el.appendChild(_b);
+            _bs.appendChild(_b);
         })
+        _el.appendChild(_bs);
         _el.appendChild(create('div', hexBufferToValue(buffer, 'string'), "each-string"));
         $_('viewer').appendChild(_el);
     })
@@ -185,8 +189,8 @@ function loop(){
 loop();
 
 const selTar = (tar:HTMLElement) => {
-    const _ = $_('viewer').querySelector('.selected');
-    if(_) _.classList.remove('selected');
+    const _ = $_('viewer').querySelectorAll('.selected');
+    if(_.length) _.forEach(v => v.classList.remove('selected'));
     tar.classList.add('selected');
 }
 
