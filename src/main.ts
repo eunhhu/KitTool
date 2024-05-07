@@ -14,6 +14,10 @@ const create = (tag: string, text:string = "", className?:string):HTMLElement =>
     t.className = className;
     return t;
 }
+const findInClass = (clas:string, id:string) => {
+    const _ = Array.from($$(`.${clas}`));
+    return _.find((v:Element) => v.id == id);
+}
 
 emit('init');
 
@@ -29,6 +33,7 @@ let states:{[key:string]:any} = {
     selectedType: 'byte',
     selectedBuffer: [null, 1],
     selectedAddress: null,
+    isMousedown: false,
 };
 
 $_('state').onclick = (e) => {
@@ -143,13 +148,18 @@ on('loadLine', (e, buffers:string[], modBase:number) => {
             const _b = create('div', v, "each-byte");
             _b.id = `${(modBase + i * 0x10 + j).toString(16).toUpperCase()}`;
             if(states["selectedBuffer"][0] == _b.id) _b.classList.add('selected');
+            else if(
+                states["selectedBuffer"][0] &&
+                states["selectedBuffer"][1] > 1 &&
+                parseInt(states["selectedBuffer"][0], 16) <= parseInt(_b.id, 16) &&
+                parseInt(_b.id, 16) < parseInt(states["selectedBuffer"][0], 16) + states["selectedBuffer"][1]
+            ) _b.classList.add('selected');
             _bs.appendChild(_b);
         })
         _el.appendChild(_bs);
         _el.appendChild(create('div', hexBufferToValue(buffer, 'string'), "each-string"));
         $_('viewer').appendChild(_el);
     })
-    console.log(states["selectedBuffer"], states["selectedAddress"])
 })
 
 $_('viewer').onwheel = e => {
@@ -197,6 +207,7 @@ const selTar = (tar:HTMLElement) => {
 }
 
 $_('viewer').onmousedown = e => {
+    states["isMousedown"] = true;
     const tar = e.target as HTMLElement;
     if(tar.classList.contains('each-byte')){
         selTar(tar);
@@ -207,11 +218,24 @@ $_('viewer').onmousedown = e => {
         states["selectedBuffer"] = [null, 1];
         states["selectedAddress"] = tar.id;
     } else {
-        const _ = $_('viewer').querySelector('.selected');
-        if(_) _.classList.remove('selected');
         states["selectedBuffer"] = [null, 1];
         states["selectedAddress"] = null;
+        loadLine();
     }
+}
+
+$_('viewer').onmousemove = e => {
+    if(!states["isMousedown"]) return;
+    const tar = e.target as HTMLElement;
+    if(tar.classList.contains('each-byte')){
+        const offset = parseInt(tar.id, 16) - parseInt(states["selectedBuffer"][0], 16);
+        states["selectedBuffer"][1] = offset + 1;
+        loadLine();
+    }
+}
+
+$_('viewer').onmouseup = e => {
+    states["isMousedown"] = false;
 }
 
 document.onkeydown = e => {
@@ -221,8 +245,6 @@ document.onkeydown = e => {
     if(e.key == 'ArrowRight'){
         if(states["selectedBuffer"][0]){
             states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 1);
-            const _ = $(`#${states["selectedBuffer"][0]}.each-byte`) as HTMLElement;
-            selTar(_);
         } else {
             states["selectedBuffer"] = [states["selectedAddress"], 1];
             states["selectedAddress"] = null;
@@ -230,30 +252,21 @@ document.onkeydown = e => {
     } else if(e.key == 'ArrowLeft'){
         if(states["selectedBuffer"][0]){
             states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -1);
-            const _ = $(`#${states["selectedBuffer"][0]}.each-byte`) as HTMLElement;
-            selTar(_);
         }
     } else if(e.key == 'ArrowUp'){
         if(states["selectedBuffer"][0]){
             states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -0x10);
-            const _ = $(`#${states["selectedBuffer"][0]}.each-byte`) as HTMLElement;
-            selTar(_);
         } else {
             states["selectedAddress"] = addHex(states["selectedAddress"], -0x10);
-            const _ = $(`#${states["selectedAddress"]}.each-address`) as HTMLElement;
-            selTar(_);
         }
     } else if(e.key == 'ArrowDown'){
         if(states["selectedBuffer"][0]){
             states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 0x10);
-            const _ = $(`#${states["selectedBuffer"][0]}.each-byte`) as HTMLElement;
-            selTar(_);
         } else {
             states["selectedAddress"] = addHex(states["selectedAddress"], 0x10);
-            const _ = $(`#${states["selectedAddress"]}.each-address`) as HTMLElement;
-            selTar(_);
         }
     }
+    loadLine();
 }
 
 function gotoAddress(value:string){
