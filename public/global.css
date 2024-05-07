@@ -17,6 +17,12 @@ html, body{
 }
 
 .hide{display: none !important;}
+.selected{@apply bg-blue-400 text-white hover:bg-blue-500}
+.each-process{@apply w-full border-b select-none text-sm p-1}
+.each-process:not(.selected){@apply text-neutral-600 hover:bg-neutral-100}
+.each-buffer{@apply w-full flex flex-row justify-around items-center text-center text-xs font-mono overflow-hidden whitespace-nowrap}
+.each-buffer>div:first-child, .each-buffer>div:last-child{@apply select-none}
+
 button{@apply bg-neutral-50 text-neutral-600 border border-neutral-300 shadow-sm}
 button:hover{@apply bg-neutral-100 border-neutral-400}
 button:active{@apply bg-blue-400 text-white}

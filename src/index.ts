@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
-import { getProcesses, readBuffer } from "memoryjs";
+import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject } from "memoryjs";
 
 const createWindow = (id:string) => {
   const main = new BrowserWindow({
@@ -9,8 +9,7 @@ const createWindow = (id:string) => {
     webPreferences: {
         preload:path.join(__dirname, 'preload.js'),
         nodeIntegration:true,
-        contextIsolation:false,
-        webSecurity:false
+        contextIsolation:false
     },
     show: false,
     autoHideMenuBar: true,
@@ -25,20 +24,55 @@ const createWindow = (id:string) => {
   return main;
 };
 
+let prc:ProcessObject|null = null;
+
 app.whenReady().then(() => {
   const main = createWindow("main");
 
   ipcMain.on('getProcesses', () => {
     main.webContents.send('getProcesses', getProcesses())
   })
+
+  ipcMain.on('attach', (e, pid) => {
+    const tar = getProcesses().find(v => v.th32ProcessID == pid[0])
+    const pr = openProcess(tar.szExeFile);
+    if(!pr) return main.webContents.send('error', 'Process not found');
+    prc = pr;
+    main.webContents.send('attached', prc)
+  })
+
+  ipcMain.on('detach', () => {
+    prc = null;
+    main.webContents.send('detached')
+  })
+
+  ipcMain.on('readBuffer', (e, [addr, size]) => {
+    let buffer = ''
+    for (let i = 0; i < size; i++) {
+      buffer += (+readMemory(prc.handle, +addr + i, 'byte')).toString(16).padStart(2, '0') + ' '
+    }
+    main.webContents.send('readBuffer', buffer)
+  })
+
+  ipcMain.on('loadLine', (e, [addr, line]) => {
+    const buffers = []
+    for (let i = 0; i < line; i++) {
+      let buffer = ''
+      for (let j = 0; j < 16; j++) {
+        buffer += (+readMemory(prc.handle, +addr + i * 16 + j, 'byte')).toString(16).padStart(2, '0') + ' '
+      }
+      buffers.push(buffer)
+    }
+    main.webContents.send('loadLine', buffers, addr)
+  })
 });
 
 app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-        app.quit();
-    }
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });
 
 ipcMain.on("log", (event, args) => {
-    console.log(...args);
+  console.log(...args);
 });
