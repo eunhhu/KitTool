@@ -1,0 +1,35 @@
+{
+  "name": "kittool",
+  "version": "1.0.0",
+  "description": "Memory Analyzing Tool",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "tsc && electron-builder",
+    "dev": "tsc -w",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.10",
+    "electron": "^30.0.2",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "memoryjs": "3.4"
+  },
+  "build": {
+    "appId": "com.mswtester.kittool",
+    "productName": "kittool",
+    "win": {
+      "target": "nsis",
+      "icon": "./public/favicon.ico"
+    },
+    "directories": {
+      "output": "build"
+    }
+  }
+}
