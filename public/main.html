@@ -3,10 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>KitTool v1.0</title>
+    <link rel="stylesheet" href="./output.css">
 </head>
 <body>
-    <h1>hi</h1>
+    <div id="root" class="w-full h-full flex flex-col justify-center items-center bg-neutral-100 p-3 lg:p-4 overflow-hidden">
+        <div class="absolute top-1 lg:top-2 text-sm gap-0 flex" id="state">
+            <button class="rounded-l-md p-1 lg:p-1.5 text-sm lg:text-md active" id="s-viewer">Viewer</button>
+            <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-compare">Compare</button>
+        </div>
+        <div class="w-full h-full bg-neutral-200 rounded-md lg:rounded-lg flex flex-row justify-center items-center p-2 lg:p-3 pt-6 lg:pt-8">
+            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 lg:gap-2">
+                <div class="w-full flex flex-row justify-around items-center text-center text-xs font-mono pr-3">
+                    <div>&nbsp;&nbsp;&nbsp;ADDRESS</div>
+                    <div>00</div>
+                    <div>01</div>
+                    <div>02</div>
+                    <div>03</div>
+                    <div>04</div>
+                    <div>05</div>
+                    <div>06</div>
+                    <div>07</div>
+                    <div>08</div>
+                    <div>09</div>
+                    <div>0A</div>
+                    <div>0B</div>
+                    <div>0C</div>
+                    <div>0D</div>
+                    <div>0E</div>
+                    <div>0F</div>
+                    <div>0123456789ABCDEF</div>
+                </div>
+                <div class="w-full h-full bg-white overflow-x-hidden overflow-y-scroll rounded-md lg:rounded-lg">
+                    <div class="w-full flex flex-row justify-around items-center text-center text-xs font-mono"><div class="select-none">337F9EA02B</div><div>00</div><div>00</div><div>00</div><div>00</div><div>DB</div><div>78</div><div>00</div><div>00</div><div>FF</div><div>FF</div><div>FF</div><div>F9</div><div>E8</div><div>D0</div><div>3A</div><div>94</div><div class="select-none">.....+S.[dst...4</div></div>
+                </div>
+            </div>
+            <div class="w-[40%] h-full flex flex-col justify-start items-center text-sm">
+                <div class="flex flex-row justify-center items-center gap-2">
+                    <button class="p-1 rounded-md pl-3 pr-3" id="open-attach">Attach</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="attacher" class="hide w-full h-full flex flex-col justify-center items-center bg-[#0002] fixed top-0 left-0">
+        <div class="rounded-md lg:rounded-lg bg-neutral-200 shadow-md w-[40%] h-[80%] p-2 lg:p-3 flex flex-col justify-center items-center gap-2 lg:gap-3">
+            <div class="w-full h-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow overflow-x-hidden overflow-y-auto" id="process-list"></div>
+            <div class="w-full flex flex-row justify-center items-center gap-1">
+                <input type="text" name="" id="" class="p-1 rounded-md w-full">
+                <button class="p-1 rounded-md pl-2 pr-2" id="attach" disabled>Attach</button>
+            </div>
+        </div>
+    </div>
     <script type="module" src="../dist/main.js"></script>
 </body>
 </html>

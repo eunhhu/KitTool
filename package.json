@@ -4,9 +4,9 @@
   "description": "Memory Analyzing Tool",
   "main": "dist/index.js",
   "scripts": {
-    "start": "electron .",
+    "start": "tsc && electron .",
     "build": "tsc && electron-builder",
-    "dev": "tsc -w",
+    "dev": "concurrently \"tsc -w\" \"npx tailwindcss -i ./public/global.css -o ./public/output.css --watch\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,11 +14,17 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.12.10",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "electron": "^30.0.2",
     "electron-builder": "^24.13.3",
+    "postcss-loader": "^8.1.1",
+    "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "electron-is-dev": "^3.0.1",
     "memoryjs": "3.4"
   },
   "build": {

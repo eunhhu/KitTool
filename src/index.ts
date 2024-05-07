@@ -1,18 +1,21 @@
 import { app, BrowserWindow, ipcMain } from "electron";
-import { readBuffer } from "memoryjs";
-
-const isDev = process.env.NODE_ENV === "development";
+import path from "path";
+import { getProcesses, readBuffer } from "memoryjs";
 
 const createWindow = (id:string) => {
   const main = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 700,
     webPreferences: {
-      nodeIntegration: true,
+        preload:path.join(__dirname, 'preload.js'),
+        nodeIntegration:true,
+        contextIsolation:false,
+        webSecurity:false
     },
     show: false,
     autoHideMenuBar: true,
-    titleBarOverlay: false
+    titleBarOverlay: false,
+    icon: `public/favicon.ico`,
   });
 
   main.loadFile(`public/${id}.html`);
@@ -23,7 +26,11 @@ const createWindow = (id:string) => {
 };
 
 app.whenReady().then(() => {
-    const main = createWindow("main");
+  const main = createWindow("main");
+
+  ipcMain.on('getProcesses', () => {
+    main.webContents.send('getProcesses', getProcesses())
+  })
 });
 
 app.on("window-all-closed", () => {
