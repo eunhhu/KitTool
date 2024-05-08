@@ -37,6 +37,8 @@ $_('state').onclick = (e) => {
     states["state"] = tar.id.split('-')[1]
     $$('#state > button').forEach(element => element.classList.remove('active'))
     tar.classList.add('active')
+    $$('.v-content').forEach(element => element.classList.add('hide'))
+    $_(`v-${states["state"]}`).classList.remove('hide')
 }
 
 $_('open-attach').onclick = e => {
