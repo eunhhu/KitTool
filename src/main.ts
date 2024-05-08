@@ -14,10 +14,6 @@ const create = (tag: string, text:string = "", className?:string):HTMLElement =>
     t.className = className;
     return t;
 }
-const findInClass = (clas:string, id:string) => {
-    const _ = Array.from($$(`.${clas}`));
-    return _.find((v:Element) => v.id == id);
-}
 
 emit('init');
 
@@ -30,10 +26,13 @@ let states:{[key:string]:any} = {
     curAddress: null,
     curOffset: 0,
     loadLine: false,
+    loadLib: true,
     selectedType: 'byte',
     selectedBuffer: [null, 1],
     selectedAddress: null,
     isMousedown: false,
+    lib: [],
+    selectedLib: [-1, 0], // [index, length]
 };
 
 $_('state').onclick = (e) => {
@@ -110,6 +109,10 @@ $_('detach').onclick = e => {
     states["curProcess"] = null;
     states["curAddress"] = null;
     states["curOffset"] = 0;
+    states["selectedBuffer"] = [null, 1];
+    states["selectedAddress"] = null;
+    states["selectedLib"] = [-1, 0];
+    states["lib"] = [];
 
     ($_('detach') as HTMLButtonElement).disabled = true;
     $_('viewer').innerHTML = '';
@@ -125,16 +128,19 @@ on('attached', (e, prc:ProcessObject) => {
     states["loadLine"] = true;
     states["selectedBuffer"] = [null, 1];
     states["selectedAddress"] = null;
+    states["selectedLib"] = [-1, 0];
+    states["lib"] = [];
 })
 
 function loadLine(line:number = Math.floor($_('viewer').getClientRects().item(0).height/12)){
     if(!states["curProcess"]) return;
     if(!states["curAddress"]) return;
+    if(states["state"] != 'viewer') return;
     const _address = states["curAddress"] + Math.floor(states["curOffset"])*0x10;
-    emit('loadLine', _address, line);
+    emit('loadLine', _address, line, states["selectedType"]);
 }
 
-on('loadLine', (e, buffers:string[], modBase:number) => {
+on('loadLine', (e, buffers:string[], values:string[], modBase:number) => {
     modBase = +modBase;
     $_('viewer').innerHTML = '';
     buffers.forEach((buffer, i) => {
@@ -143,11 +149,18 @@ on('loadLine', (e, buffers:string[], modBase:number) => {
         _a.id = `${(modBase + i * 0x10).toString(16).toUpperCase()}`
         if(states["selectedAddress"] == _a.id) _a.classList.add('selected');
         _el.appendChild(_a);
-        const _bs = create('div', "", "bytes");
-        buffer.split(' ').forEach((v, j) => {
-            const _b = create('div', v, "each-byte");
-            _b.id = `${(modBase + i * 0x10 + j).toString(16).toUpperCase()}`;
-            if(states["selectedBuffer"][0] == _b.id) _b.classList.add('selected');
+        const _bs = create('div', "", "byte-values");
+        const b_ar = values[i].split(' ')
+        b_ar.forEach((v, j) => {
+            if(!v) return;
+            let _r:string = '';
+            _r = v;
+            const maxLen = states["selectedType"] == 'byte' ? 2 : states["selectedType"] == 'double' ? 22 : 10;
+            if(_r.length > maxLen) _r = _r.slice(0, maxLen) + '..';
+            const _b = create('div', _r, "each-byte");
+            const _off = states["selectedType"] == 'byte' ? j : states["selectedType"] == 'double' ? j*8 : j*4;
+            _b.id = (modBase + i * 0x10 + _off).toString(16).toUpperCase();
+            if(states["selectedBuffer"][0] == _b.id && states["selectedBuffer"][1] == 1) _b.classList.add('selected');
             else if(
                 states["selectedBuffer"][0] &&
                 states["selectedBuffer"][1] > 1 &&
@@ -161,6 +174,37 @@ on('loadLine', (e, buffers:string[], modBase:number) => {
         $_('viewer').appendChild(_el);
     })
 })
+
+function loadLib(){
+    emit('loadLib', states["lib"]);
+}
+
+on('loadLib', (e, lib:{address:string;type:ValueType;value:string}[]) => {
+    $_('lib-viewer').innerHTML = '';
+    lib.forEach((v, i) => {
+        const _el = create('div', "", "each-save");
+        if(states["selectedLib"][0] != -1){
+            let _startPoint = states["selectedLib"][0];
+            let _endPoint = states["selectedLib"][0] + states["selectedLib"][1];
+            // if(_startPoint == i) {_el.classList.add('selected')}
+            if(_startPoint < _endPoint) {
+                if(_startPoint <= i && i < _endPoint) _el.classList.add('selected');
+            } else {
+                if(_endPoint-1 <= i && i < _startPoint+1) _el.classList.add('selected');
+            }
+        }
+        const _a = create('div', `${v.address}`, "each-save-address")
+        _a.id = v.address;
+        _el.appendChild(_a);
+        const _t = create('div', `${v.type}`, "each-save-type");
+        _t.id = v.type;
+        _el.appendChild(_t);
+        const _b = create('div', v.value, "each-save-value");
+        _el.appendChild(_b);
+        $_('lib-viewer').appendChild(_el);
+    });
+});
+
 
 $_('viewer').onwheel = e => {
     if(!states["curProcess"]) return;
@@ -194,47 +238,59 @@ $_('goto-offset').onclick = e => {
     _.value = '';
 }
 
+$_('selected-type').onchange = e => {
+    const _ = $_('selected-type') as HTMLSelectElement;
+    states["selectedType"] = _.value;
+    loadLine();
+}
+
 function loop(){
     if(states["loadLine"]) loadLine();
+    if(states["loadLib"]) loadLib();
     setTimeout(loop, 500);
 }
 loop();
 
-const selTar = (tar:HTMLElement) => {
-    const _ = $_('viewer').querySelectorAll('.selected');
-    if(_.length) _.forEach(v => v.classList.remove('selected'));
-    tar.classList.add('selected');
-}
-
-$_('viewer').onmousedown = e => {
+document.onmousedown = e => {
     states["isMousedown"] = true;
     const tar = e.target as HTMLElement;
     if(tar.classList.contains('each-byte')){
-        selTar(tar);
         states["selectedBuffer"] = [tar.id, 1];
         states["selectedAddress"] = null;
+        states["selectedLib"] = [-1, 0];
     } else if(tar.classList.contains('each-address')){
-        selTar(tar);
         states["selectedBuffer"] = [null, 1];
         states["selectedAddress"] = tar.id;
-    } else {
+        states["selectedLib"] = [-1, 0];
+    } else if(tar.classList.contains('each-save') || tar.parentElement.classList.contains('each-save')){
+        const target = tar.parentElement.classList.contains('each-save') ? tar.parentElement : tar;
         states["selectedBuffer"] = [null, 1];
         states["selectedAddress"] = null;
-        loadLine();
+        states["selectedLib"] = [Array.from(target.parentElement.children).indexOf(target), 1];
+    } else if(tar.id != 'save-address') {
+        states["selectedBuffer"] = [null, 1];
+        states["selectedAddress"] = null;
+        states["selectedLib"] = [-1, 0];
     }
+    loadLine();
+    loadLib();
 }
 
-$_('viewer').onmousemove = e => {
+document.onmousemove = e => {
     if(!states["isMousedown"]) return;
     const tar = e.target as HTMLElement;
     if(tar.classList.contains('each-byte')){
         const offset = parseInt(tar.id, 16) - parseInt(states["selectedBuffer"][0], 16);
         states["selectedBuffer"][1] = offset + 1;
         loadLine();
+    } else if(tar.classList.contains('each-save')){
+        const offset = Array.from(tar.parentElement.children).indexOf(tar) - states["selectedLib"][0];
+        states["selectedLib"][1] = offset + 1;
+        loadLib();
     }
 }
 
-$_('viewer').onmouseup = e => {
+document.onmouseup = e => {
     states["isMousedown"] = false;
 }
 
@@ -265,8 +321,50 @@ document.onkeydown = e => {
         } else {
             states["selectedAddress"] = addHex(states["selectedAddress"], 0x10);
         }
+    } else if(e.key == 'c' && e.ctrlKey){
+        if(document.activeElement.tagName == 'INPUT') return;
+        e.preventDefault();
+        if(states["selectedBuffer"][0]){
+            const addr = parseInt(states["selectedBuffer"][0], 16);
+            const len = states["selectedBuffer"][1];
+            emit('copy', addr, len);
+            once('copy', (e, buffer:string) => {
+                console.log(addr, len, buffer)
+                navigator.clipboard.writeText(buffer);
+            })
+        } else if(states["selectedAddress"]){
+            navigator.clipboard.writeText(states["selectedAddress"]);
+        }
+    } else if(e.key == 's' && e.ctrlKey){
+        if(document.activeElement.tagName == 'INPUT') return;
+        e.preventDefault();
+        AddToLib();
     }
     loadLine();
+}
+
+$_('save-address').onclick = e => {
+    AddToLib();
+}
+
+function AddToLib(){
+    const tar = states["selectedBuffer"][0] || states["selectedAddress"]
+    if(tar){
+        const addr = parseInt(tar, 16);
+        const len = states["selectedBuffer"][0] ? states["selectedBuffer"][1] : 1;
+        const type = states["selectedType"];
+        if(type != 'byte' && len != 1) {
+            // push multiple values
+            const _byteLen = type == 'doube' ? 8 : 4;
+            const _count = Math.ceil(len / _byteLen);
+            for(let i = 0; i < _count; i++){
+                states["lib"].push({addr: addr + i * _byteLen, type, len: 1});
+            }
+        } else {
+            states["lib"].push({addr, type, len});
+        }
+        loadLib();
+    }
 }
 
 function gotoAddress(value:string){
@@ -368,7 +466,7 @@ function hexBufferToValue(buffer:string, type:ValueType):any {
         case 'double':
             return parseFloat(buffer.replace(' ', ''));
         case 'string':
-            return buffer.split(' ').map(v => {
+            return buffer.split(' ').filter(v => v).map(v => {
                 const char = String.fromCharCode(parseInt(v, 16))
                 // check if this char is printable
                 return char.match(/[a-zA-Z0-9\s]/) ? char : '.';

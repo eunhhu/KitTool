@@ -10,13 +10,14 @@
     <div id="root" class="w-full h-full flex flex-col justify-center items-center bg-neutral-100 p-3 lg:p-4 overflow-hidden">
         <div class="absolute top-1 lg:top-2 text-sm gap-0 flex" id="state">
             <button class="rounded-l-md p-1 lg:p-1.5 text-sm lg:text-md active" id="s-viewer">Viewer</button>
-            <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-compare">Compare</button>
+            <button class="p-1 lg:p-1.5 text-sm lg:text-md" id="s-compare">Compare</button>
+            <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-config">Config</button>
         </div>
         <div id="v-viewer" class="v-content w-full h-full bg-neutral-200 rounded-md lg:rounded-lg flex flex-row justify-center items-center p-2 lg:p-3 pt-6 lg:pt-8 gap-2 lg:gap-3">
             <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 lg:gap-2 select-none">
                 <div class="each-buffer">
                     <div class="ml-8">ADDRESS</div>
-                    <div class="bytes">
+                    <div class="byte-values p-each-byte">
                         <div>00</div>
                         <div>01</div>
                         <div>02</div>
@@ -34,7 +35,7 @@
                         <div>0E</div>
                         <div>0F</div>
                     </div>
-                    <div style="letter-spacing: 0.028rem;">0123456789ABCDEF</div>
+                    <div>0123456789ABCDEF</div>
                 </div>
                 <div class="w-full h-full bg-white overflow-hidden rounded-md lg:rounded-lg" id="viewer"></div>
             </div>
@@ -56,10 +57,30 @@
                     <input type="text" name="" id="offset" class="p-1 rounded-md w-full" placeholder="Offset">
                     <button class="p-1 rounded-md pl-3 pr-3" id="goto-offset">Go</button>
                 </div>
-                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8"></div>
+                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8 mt-4 lg:mt-6">
+                    <select class="rounded-md p-1" name="" id="selected-type">
+                        <option value="byte">Byte</option>
+                        <option value="int">Int</option>
+                        <option value="float">Float</option>
+                        <option value="double">Double</option>
+                    </select>
+                    <button class="p-1 rounded-md pl-3 pr-3" id="save-address">Save Current Address</button>
+                </div>
+                <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Library</div>
+                <div class="w-full h-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow overflow-hidden">
+                    <div class="header-save">
+                        <div>ADDRESS</div>
+                        <div>TYPE</div>
+                        <div>VALUE</div>
+                    </div>
+                    <div class="save-list" id="lib-viewer"></div>
+                </div>
             </div>
         </div>
         <div id="v-compare" class="v-content">
+
+        </div>
+        <div id="v-config" class="v-content">
 
         </div>
     </div>

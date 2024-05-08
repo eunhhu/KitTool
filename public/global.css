@@ -7,7 +7,7 @@
     src: url('./VictorMonoAll/TTF/VictorMono-Medium.ttf');
 }
 
-*{box-sizing: border-box;}
+*{box-sizing: border-box !important;}
 
 html, body{
     margin: 0;
@@ -20,8 +20,16 @@ html, body{
 .selected{@apply bg-blue-400 text-white hover:bg-blue-500}
 .each-process{@apply w-full border-b select-none text-sm p-1}
 .each-process:not(.selected){@apply text-neutral-600 hover:bg-neutral-100}
-.each-buffer{@apply w-full flex flex-row justify-around items-center text-center text-xs font-mono overflow-hidden whitespace-nowrap}
-.bytes{@apply flex flex-row justify-center items-center gap-2}
+.each-buffer{@apply w-full flex flex-row justify-around items-center text-left text-xs font-mono overflow-hidden whitespace-nowrap}
+.each-buffer > div:first-child{@apply mr-2}
+.each-buffer > div:last-child{@apply w-32}
+.byte-values{@apply flex flex-row justify-between items-center w-96}
+.each-byte, .p-each-byte > div{@apply flex-1 w-full overflow-hidden whitespace-nowrap text-wrap}
+.each-save, .header-save{@apply w-full border-b select-none text-sm p-1 flex flex-row justify-between items-center text-center}
+.each-save > div, .header-save > div{@apply flex-1}
+.header-save{@apply text-neutral-700 font-bold}
+.each-save:not(.selected){@apply text-neutral-600 hover:bg-neutral-100}
+.save-list{@apply w-full h-full flex flex-col justify-start items-center overflow-x-hidden overflow-y-auto}
 
 button{@apply bg-neutral-50 text-neutral-600 border border-neutral-300 shadow-sm}
 button:hover{@apply bg-neutral-100 border-neutral-400}
@@ -31,9 +39,9 @@ button:disabled:hover{@apply bg-neutral-50 border-neutral-300}
 button:disabled:active{@apply bg-neutral-50 text-neutral-600}
 button.active{@apply bg-blue-400 text-white}
 
-input{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
-input:hover{@apply bg-neutral-100 border-neutral-400}
-input:focus{@apply outline-none border-2 border-blue-400}
+input, select{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
+input:hover, select:hover{@apply bg-neutral-100 border-neutral-400}
+input:focus, select:focus{@apply outline-none border-2 border-blue-400}
 
 ::-webkit-scrollbar{@apply w-3 bg-neutral-100 p-0.5}
 ::-webkit-scrollbar-button{@apply hidden}
