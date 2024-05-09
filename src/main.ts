@@ -33,6 +33,7 @@ let states:{[key:string]:any} = {
     isMousedown: false,
     lib: [],
     selectedLib: [-1, 0], // [index, length]
+    isEditing: -1, // lib index
 };
 
 $_('state').onclick = (e) => {
@@ -179,14 +180,13 @@ function loadLib(){
     emit('loadLib', states["lib"]);
 }
 
-on('loadLib', (e, lib:{address:string;type:ValueType;value:string}[]) => {
+on('loadLib', (e, lib:{address:string;type:ValueType;value:string;}[]) => {
     $_('lib-viewer').innerHTML = '';
     lib.forEach((v, i) => {
         const _el = create('div', "", "each-save");
         if(states["selectedLib"][0] != -1){
             let _startPoint = states["selectedLib"][0];
             let _endPoint = states["selectedLib"][0] + states["selectedLib"][1];
-            // if(_startPoint == i) {_el.classList.add('selected')}
             if(_startPoint < _endPoint) {
                 if(_startPoint <= i && i < _endPoint) _el.classList.add('selected');
             } else {
@@ -199,7 +199,10 @@ on('loadLib', (e, lib:{address:string;type:ValueType;value:string}[]) => {
         const _t = create('div', `${v.type}`, "each-save-type");
         _t.id = v.type;
         _el.appendChild(_t);
-        const _b = create('div', v.value, "each-save-value");
+        let _ = `${v.value}`;
+        const maxLen = 12;
+        if(_.length > maxLen) _ = _.slice(0, maxLen) + '..';
+        const _b = create('div', _, "each-save-value");
         _el.appendChild(_b);
         $_('lib-viewer').appendChild(_el);
     });
@@ -294,53 +297,101 @@ document.onmouseup = e => {
     states["isMousedown"] = false;
 }
 
-document.onkeydown = e => {
+const closeEditor = () => {
+    $_('editor').classList.add('hide');
+    states["isEditing"] = -1;
+    ($_('editor-addr') as HTMLInputElement).value = '';
+    ($_('editor-type') as HTMLSelectElement).value = 'byte';
+    ($_('editor-value') as HTMLInputElement).value = '';
+}
+
+$_('editor').onmousedown = e => {if(e.target == e.currentTarget) closeEditor();}
+
+document.onkeydown = async e => {
     if(!states["curProcess"]) return;
     if(!states["curAddress"]) return;
-    if(!states["selectedBuffer"][0] && !states["selectedAddress"]) return;
-    if(e.key == 'ArrowRight'){
-        if(states["selectedBuffer"][0]){
-            states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 1);
-        } else {
-            states["selectedBuffer"] = [states["selectedAddress"], 1];
-            states["selectedAddress"] = null;
+    if(!states["selectedBuffer"][0] && !states["selectedAddress"]){
+        if(states["selectedLib"][0] != -1){
+            if(e.key == 'Delete'){
+                let _startPoint = states["selectedLib"][0];
+                let _endPoint = states["selectedLib"][0] + states["selectedLib"][1];
+                if(_startPoint >= _endPoint) [_startPoint, _endPoint] = [_endPoint, _startPoint];
+                let _count = _endPoint - _startPoint;
+                states["lib"].splice(_startPoint, _count);
+                states["selectedLib"] = [-1, 0];
+                loadLib();
+            } else if(e.key == 'ArrowUp'){
+                if(states["selectedLib"][0] == 0) return;
+                states["selectedLib"][0]--;
+                loadLib();
+            } else if(e.key == 'ArrowDown'){
+                if(states["selectedLib"][0] == states["lib"].length-1) return;
+                states["selectedLib"][0]++;
+                loadLib();
+            } else if(e.key == 'g' && e.ctrlKey){
+                if(document.activeElement.tagName == 'INPUT') return;
+                e.preventDefault();
+                const _addr = states["lib"][states["selectedLib"][0]].addr.toString(16).toUpperCase();
+                gotoAddress(_addr);
+            } else if(e.key == 'Enter'){
+                if(document.activeElement.tagName == 'INPUT') return;
+                e.preventDefault();
+                states["isEditing"] = states["selectedLib"][0];
+                $_('editor').classList.remove('hide');
+                const _tr = states["lib"][states["selectedLib"][0]];
+                loadLib();
+                ($_('editor-addr') as HTMLInputElement).value = _tr.addr.toString(16).toUpperCase();
+                ($_('editor-type') as HTMLSelectElement).value = _tr.type;
+                const _val = ipcRenderer.sendSync('readMemory', _tr.addr, _tr.type);
+                console.log(_val);
+                ($_('editor-value') as HTMLInputElement).value = _val;
+            }
         }
-    } else if(e.key == 'ArrowLeft'){
-        if(states["selectedBuffer"][0]){
-            states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -1);
+    } else {
+        if(e.key == 'ArrowRight'){
+            if(states["selectedBuffer"][0]){
+                states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 1);
+            } else {
+                states["selectedBuffer"] = [states["selectedAddress"], 1];
+                states["selectedAddress"] = null;
+            }
+        } else if(e.key == 'ArrowLeft'){
+            if(states["selectedBuffer"][0]){
+                states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -1);
+            }
+        } else if(e.key == 'ArrowUp'){
+            if(states["selectedBuffer"][0]){
+                states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -0x10);
+            } else {
+                states["selectedAddress"] = addHex(states["selectedAddress"], -0x10);
+            }
+        } else if(e.key == 'ArrowDown'){
+            if(states["selectedBuffer"][0]){
+                states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 0x10);
+            } else {
+                states["selectedAddress"] = addHex(states["selectedAddress"], 0x10);
+            }
+        } else if(e.key == 'c' && e.ctrlKey){
+            if(document.activeElement.tagName == 'INPUT') return;
+            e.preventDefault();
+            if(states["selectedBuffer"][0]){
+                const addr = parseInt(states["selectedBuffer"][0], 16);
+                const len = states["selectedBuffer"][1];
+                emit('copy', addr, len);
+                once('copy', (e, buffer:string) => {
+                    console.log(addr, len, buffer)
+                    navigator.clipboard.writeText(buffer);
+                })
+            } else if(states["selectedAddress"]){
+                navigator.clipboard.writeText(states["selectedAddress"]);
+            }
+        } else if(e.key == 's' && e.ctrlKey){
+            if(document.activeElement.tagName == 'INPUT') return;
+            e.preventDefault();
+            AddToLib();
         }
-    } else if(e.key == 'ArrowUp'){
-        if(states["selectedBuffer"][0]){
-            states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], -0x10);
-        } else {
-            states["selectedAddress"] = addHex(states["selectedAddress"], -0x10);
-        }
-    } else if(e.key == 'ArrowDown'){
-        if(states["selectedBuffer"][0]){
-            states["selectedBuffer"][0] = addHex(states["selectedBuffer"][0], 0x10);
-        } else {
-            states["selectedAddress"] = addHex(states["selectedAddress"], 0x10);
-        }
-    } else if(e.key == 'c' && e.ctrlKey){
-        if(document.activeElement.tagName == 'INPUT') return;
-        e.preventDefault();
-        if(states["selectedBuffer"][0]){
-            const addr = parseInt(states["selectedBuffer"][0], 16);
-            const len = states["selectedBuffer"][1];
-            emit('copy', addr, len);
-            once('copy', (e, buffer:string) => {
-                console.log(addr, len, buffer)
-                navigator.clipboard.writeText(buffer);
-            })
-        } else if(states["selectedAddress"]){
-            navigator.clipboard.writeText(states["selectedAddress"]);
-        }
-    } else if(e.key == 's' && e.ctrlKey){
-        if(document.activeElement.tagName == 'INPUT') return;
-        e.preventDefault();
-        AddToLib();
+        loadLine();
     }
-    loadLine();
 }
 
 $_('save-address').onclick = e => {
@@ -487,4 +538,8 @@ function valueToHexBuffer(value:any, type:ValueType):string {
         case 'string':
             return value.split('').map((v:string) => v.charCodeAt(0).toString(16)).join(' ');
     }
+}
+
+function reverseBuffer(buffer:string):string {
+    return buffer.split(' ').reverse().join(' ');
 }

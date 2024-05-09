@@ -64,10 +64,6 @@ app.whenReady().then(() => {
     main.webContents.send('detached')
   })
 
-  ipcMain.on('readBuffer', (e, [addr, size]) => {
-    main.webContents.send('readBuffer', readBuffer(addr, size))
-  })
-
   ipcMain.on('loadLine', (e, [addr, line, type]) => {
     const buffers:string[] = []
     const values:string[] = []
@@ -108,23 +104,26 @@ app.whenReady().then(() => {
     const li:{addr:number; type:string; len:number}[] = lib as any;
     const libr:{address:string;type:string;value:string}[] = [];
     li.forEach(v => {
-      const maxLen = 12;
+      let _buffer:string = '';
       let _:string = '';
       switch (v.type) {
         case 'byte':
+          _buffer = readBuffer(v.addr, v.len)
           _ = readBuffer(v.addr, v.len)
           break;
         case 'int':
-          _ = readMemory(prc.handle, +v.addr, 'int')
+          _buffer = readBuffer(+v.addr, 4)
+          _ = `${readMemory(prc.handle, +v.addr, 'int')}`
           break;
         case 'float':
-          _ = readMemory(prc.handle, +v.addr, 'float')
+          _buffer = readBuffer(+v.addr, 4)
+          _ = `${readMemory(prc.handle, +v.addr, 'float')}`
           break;
         case 'double':
-            _ = readMemory(prc.handle, +v.addr, 'double')
+          _buffer = readBuffer(+v.addr, 8)
+          _ = `${readMemory(prc.handle, +v.addr, 'double')}`
           break;
       }
-      if(_.length > maxLen) _ = _.slice(0, maxLen) + '..'
       libr.push({address:v.addr.toString(16).toUpperCase(), type:v.type, value:_})
     })
     main.webContents.send('loadLib', libr)
@@ -140,3 +139,16 @@ app.on("window-all-closed", () => {
 ipcMain.on("log", (event, args) => {
   console.log(...args);
 });
+
+ipcMain.on('readMemory', (e, addr, type, len) => {
+  if(!prc) return;
+  e.returnValue = type == 'byte' ? readBuffer(+addr, +len) : readMemory(prc.handle, +addr, type)
+})
+
+ipcMain.on('writeMemory', (e, addr, value, type) => {
+  e.returnValue = writeMemory(prc.handle, +addr, value, type)
+})
+
+ipcMain.on('readBuffer', (e, addr, size) => {
+  e.returnValue = readBuffer(+addr, +size)
+})
