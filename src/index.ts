@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
-import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject } from "memoryjs";
+import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject, T_FLOAT, T_INT, T_DOUBLE, T_STRING, DataType } from "memoryjs";
 
 const createWindow = (id:string) => {
   const main = new BrowserWindow({
@@ -32,6 +32,13 @@ const readBuffer = (addr:number, size:number) => {
     buffer += (+readMemory(prc.handle, +addr + i, 'byte')).toString(16).padStart(2, '0') + ' '
   }
   return buffer
+}
+
+const writeBuffer = (addr:number, buffer:string) => {
+  const arr = buffer.split(' ').filter(v => v).map(v => parseInt(v, 16))
+  for (let i = 0; i < arr.length; i++) {
+    writeMemory(prc.handle, addr + i, arr[i], 'byte')
+  }
 }
 
 app.whenReady().then(() => {
@@ -145,10 +152,16 @@ ipcMain.on('readMemory', (e, addr, type, len) => {
   e.returnValue = type == 'byte' ? readBuffer(+addr, +len) : readMemory(prc.handle, +addr, type)
 })
 
-ipcMain.on('writeMemory', (e, addr, value, type) => {
-  e.returnValue = writeMemory(prc.handle, +addr, value, type)
+ipcMain.on('writeMemory', (e, addr, value, type, len) => {
+  if(!prc) return;
+  console.log(addr, value, type, len)
+  e.returnValue = type == 'byte' ? writeBuffer(+addr, value) : writeMemory(prc.handle, +addr, value, type)
 })
 
 ipcMain.on('readBuffer', (e, addr, size) => {
   e.returnValue = readBuffer(+addr, +size)
+})
+
+ipcMain.on('writeBuffer', (e, addr, buffer) => {
+  writeBuffer(+addr, buffer)
 })

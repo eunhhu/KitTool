@@ -342,8 +342,7 @@ document.onkeydown = async e => {
                 loadLib();
                 ($_('editor-addr') as HTMLInputElement).value = _tr.addr.toString(16).toUpperCase();
                 ($_('editor-type') as HTMLSelectElement).value = _tr.type;
-                const _val = ipcRenderer.sendSync('readMemory', _tr.addr, _tr.type);
-                console.log(_val);
+                const _val = ipcRenderer.sendSync('readMemory', _tr.addr, _tr.type, _tr.len);
                 ($_('editor-value') as HTMLInputElement).value = _val;
             }
         }
@@ -416,6 +415,45 @@ function AddToLib(){
         }
         loadLib();
     }
+}
+
+$_('editor-addr').oninput = e => {
+    const _ = $_('editor-address') as HTMLInputElement;
+    const _val = $_('editor-value') as HTMLInputElement;
+    const _type = ($_('editor-type') as HTMLSelectElement).value;
+    const _addr = parseInt(_.value, 16);
+    const _len = states["lib"][states["isEditing"]].len;
+    _val.value = ipcRenderer.sendSync('readMemory', _addr, _type, _len);
+}
+
+($_('editor-type') as HTMLSelectElement).oninput = e => {
+    const _ = $_('editor-type') as HTMLSelectElement;
+    const _val = $_('editor-value') as HTMLInputElement;
+    const _type = _.value;
+    const _addr = parseInt(($_('editor-addr') as HTMLInputElement).value, 16);
+    const _len = states["lib"][states["isEditing"]].len;
+    _val.value = ipcRenderer.sendSync('readMemory', _addr, _type, _len);
+}
+
+$_('save-editor').onclick = e => {
+    const _addr = parseInt(($_('editor-addr') as HTMLInputElement).value, 16);
+    const _type = ($_('editor-type') as HTMLSelectElement).value;
+    const _val = ($_('editor-value') as HTMLInputElement).value;
+    const _len = _type == 'byte' ? _val.split(' ').filter(v => v).length : _type == 'double' ? 8 : 4;
+    states["lib"][states["isEditing"]] = {addr: _addr, type: _type, len: _len};
+    closeEditor();
+    loadLib();
+}
+
+$_('write-editor').onclick = e => {
+    const _addr = parseInt(($_('editor-addr') as HTMLInputElement).value, 16);
+    const _type = ($_('editor-type') as HTMLSelectElement).value;
+    const _val = ($_('editor-value') as HTMLInputElement).value;
+    const _len = _type == 'byte' ? _val.split(' ').filter(v => v).length : _type == 'double' ? 8 : 4;
+    ipcRenderer.send('writeMemory', _addr, _type, _val, _len);
+    states["lib"][states["isEditing"]] = {addr: _addr, type: _type, len: _len};
+    closeEditor();
+    loadLib();
 }
 
 function gotoAddress(value:string){
