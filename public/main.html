@@ -78,7 +78,47 @@
             </div>
         </div>
         <div id="v-compare" class="v-content hide">
+            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 select-none text-sm">
+                <div class="w-full flex flex-col justify-center items-center gap-1">
+                    <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Library</div>
+                    <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
+                        <div class="w-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow h-48 overflow-y-auto overflow-x-hidden" id="compare-save">
+                            <div class="each-compare">7FF839283289</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full h-full">
+                    <div class="">
 
+                    </div>
+                </div>
+            </div>
+            <div class="w-[40%] h-full overflow-hidden flex flex-col justify-start items-center gap-1 select-none text-sm">
+                <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Start Offset</div>
+                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
+                    <input type="text" name="" id="start-offset" class="p-1 rounded-md w-full" placeholder="Start Offset">
+                </div>
+                <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">End Offset</div>
+                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
+                    <input type="text" name="" id="end-offset" class="p-1 rounded-md w-full" placeholder="End Offset">
+                </div>
+                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8 mt-4 lg:mt-6">
+                    <button class="p-1 rounded-md pl-3 pr-3" id="make-pattern">Make Pattern</button>
+                </div>
+                <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Result</div>
+                <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
+                    <input type="text" name="" id="pattern-result" class="p-1 rounded-md w-full" placeholder="Result" disabled>
+                </div>
+                <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Library</div>
+                <div class="w-full h-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow overflow-hidden">
+                    <div class="header-save">
+                        <div>ADDRESS</div>
+                        <div>TYPE</div>
+                        <div>VALUE</div>
+                    </div>
+                    <div class="save-list" id="c-lib-viewer"></div>
+                </div>
+            </div>
         </div>
         <div id="v-config" class="v-content hide">
 

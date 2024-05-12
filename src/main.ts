@@ -34,6 +34,7 @@ let states:{[key:string]:any} = {
     lib: [],
     selectedLib: [-1, 0], // [index, length]
     isEditing: -1, // lib index
+    compares: []
 };
 
 $_('state').onclick = (e) => {
@@ -133,7 +134,9 @@ on('attached', (e, prc:ProcessObject) => {
     states["lib"] = [];
 })
 
-function loadLine(line:number = Math.floor($_('viewer').getClientRects().item(0).height/12)){
+function loadLine(line:number = 0){
+    if($_('viewer').getClientRects().length == 0) return;
+    line = Math.floor($_('viewer').getClientRects().item(0).height/12)
     if(!states["curProcess"]) return;
     if(!states["curAddress"]) return;
     if(states["state"] != 'viewer') return;
@@ -182,6 +185,7 @@ function loadLib(){
 
 on('loadLib', (e, lib:{address:string;type:ValueType;value:string;}[]) => {
     $_('lib-viewer').innerHTML = '';
+    $_('c-lib-viewer').innerHTML = '';
     lib.forEach((v, i) => {
         const _el = create('div', "", "each-save");
         if(states["selectedLib"][0] != -1){
@@ -205,6 +209,7 @@ on('loadLib', (e, lib:{address:string;type:ValueType;value:string;}[]) => {
         const _b = create('div', _, "each-save-value");
         _el.appendChild(_b);
         $_('lib-viewer').appendChild(_el);
+        $_('c-lib-viewer').appendChild(_el.cloneNode(true));
     });
 });
 
@@ -246,7 +251,6 @@ $_('selected-type').onchange = e => {
     states["selectedType"] = _.value;
     loadLine();
 }
-
 function loop(){
     if(states["loadLine"]) loadLine();
     if(states["loadLib"]) loadLib();
@@ -308,6 +312,24 @@ const closeEditor = () => {
 $_('editor').onmousedown = e => {if(e.target == e.currentTarget) closeEditor();}
 
 document.onkeydown = async e => {
+    const _ = $_('selected-type') as HTMLSelectElement;
+    if(e.key == '1' && e.ctrlKey){
+        _.value = 'byte';
+        states["selectedType"] = 'byte';
+        loadLine();
+    } else if(e.key == '2' && e.ctrlKey){
+        _.value = 'int';
+        states["selectedType"] = 'int';
+        loadLine();
+    } else if(e.key == '3' && e.ctrlKey){
+        _.value = 'float';
+        states["selectedType"] = 'float';
+        loadLine();
+    } else if(e.key == '4' && e.ctrlKey){
+        _.value = 'double';
+        states["selectedType"] = 'double';
+        loadLine();
+    }
     if(!states["curProcess"]) return;
     if(!states["curAddress"]) return;
     if(!states["selectedBuffer"][0] && !states["selectedAddress"]){

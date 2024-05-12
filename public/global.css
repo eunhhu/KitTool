@@ -31,6 +31,7 @@ html, body{
 .each-save:not(.selected){@apply text-neutral-600 hover:bg-neutral-100}
 .save-list{@apply w-full h-full flex flex-col justify-start items-center overflow-x-hidden overflow-y-auto}
 .v-content{@apply w-full h-full bg-neutral-200 rounded-md lg:rounded-lg flex flex-row justify-center items-center p-2 lg:p-3 pt-6 lg:pt-8 gap-2 lg:gap-3}
+.each-compare{@apply w-full flex flex-col justify-center items-center text-neutral-600 border-b p-1}
 
 button{@apply bg-neutral-50 text-neutral-600 border border-neutral-300 shadow-sm}
 button:hover{@apply bg-neutral-100 border-neutral-400}
@@ -43,6 +44,7 @@ button.active{@apply bg-blue-400 text-white}
 input, select{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
 input:hover, select:hover{@apply bg-neutral-100 border-neutral-400}
 input:focus, select:focus{@apply outline-none border-2 border-blue-400}
+input:disabled, select:disabled{@apply opacity-50 cursor-not-allowed}
 
 ::-webkit-scrollbar{@apply w-3 bg-neutral-100 p-0.5}
 ::-webkit-scrollbar-button{@apply hidden}
