@@ -41,7 +41,7 @@ const writeBuffer = (addr:number, buffer:string) => {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const main = createWindow("main");
 
   ipcMain.on('init', () => {
@@ -154,7 +154,6 @@ ipcMain.on('readMemory', (e, addr, type, len) => {
 
 ipcMain.on('writeMemory', (e, addr, value, type, len) => {
   if(!prc) return;
-  console.log(addr, value, type, len)
   e.returnValue = type == 'byte' ? writeBuffer(+addr, value) : writeMemory(prc.handle, +addr, value, type)
 })
 
