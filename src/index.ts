@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
+import { readFileSync, writeFileSync } from "fs";
 import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject, T_FLOAT, T_INT, T_DOUBLE, T_STRING, DataType } from "memoryjs";
 
 const createWindow = (id:string) => {
@@ -135,6 +136,41 @@ app.whenReady().then(async () => {
     })
     main.webContents.send('loadLib', libr)
   })
+
+  ipcMain.on('loadCompare', (e, [addrs, idx, lineCount, offset]) => {
+    const lines:{value:string;o:boolean;diff:boolean;}[][] = []
+    const _addrs:number[] = addrs as number[]
+    const _omaps:string[][] = addrs.filter((v:number, i:number) => i != idx).map((v:number) => readBuffer(v + offset, 0x10 * lineCount).split(' ').filter(v => v.trim()))
+    for (let i = 0; i < lineCount; i++) {
+      lines.push(readBuffer(_addrs[idx] + (i * 0x10) + offset, 0x10).split(' ').filter(v => v.trim()).map((v, j) => {
+        return {
+          value: v,
+          o:_addrs[idx] + (i * 0x10) + offset + j == _addrs[idx],
+          diff: _omaps.some((_v, k) => v != _v[(i * 0x10) + j])
+        }
+      }))
+    }
+    main.webContents.send('loadCompare', lines)
+  })
+
+  ipcMain.on('saveMacro', async (e, [macro]) => {
+    const {canceled, filePath} = await dialog.showSaveDialog(main, {
+      title: 'Save Macro',
+      filters: [{name: 'Macro', extensions: ['ktm']}]
+    });
+    if(canceled) return;
+    writeFileSync(filePath, macro, 'utf-8');
+  })
+
+  ipcMain.on('loadMacro', async (e) => {
+    const {canceled, filePaths} = await dialog.showOpenDialog(main, {
+      title: 'Load Macro',
+      filters: [{name: 'Macro', extensions: ['ktm']}]
+    });
+    if(canceled) return;
+    const macro = readFileSync(filePaths[0], 'utf-8');
+    main.webContents.send('loadMacro', macro)
+  })
 });
 
 app.on("window-all-closed", () => {
@@ -152,9 +188,13 @@ ipcMain.on('readMemory', (e, addr, type, len) => {
   e.returnValue = type == 'byte' ? readBuffer(+addr, +len) : readMemory(prc.handle, +addr, type)
 })
 
-ipcMain.on('writeMemory', (e, addr, value, type, len) => {
+ipcMain.on('writeMemory', (e, addr, type, value, len) => {
   if(!prc) return;
-  e.returnValue = type == 'byte' ? writeBuffer(+addr, value) : writeMemory(prc.handle, +addr, value, type)
+  const _ = type == 'byte' ? value :
+    type == 'int' ? int32ToHexLE(+value) :
+    type == 'float' ? floatToHexLE(+value) :
+    type == 'double' ? doubleToHexLE(+value) : value;
+  e.returnValue = writeBuffer(+addr, _)
 })
 
 ipcMain.on('readBuffer', (e, addr, size) => {
@@ -164,3 +204,63 @@ ipcMain.on('readBuffer', (e, addr, size) => {
 ipcMain.on('writeBuffer', (e, addr, buffer) => {
   writeBuffer(+addr, buffer)
 })
+
+function hexToInt32LE(hexString: string): number {
+  // Create a buffer from the hexadecimal string
+  const buffer = Buffer.from(hexString, 'hex');
+
+  // Read the 32-bit integer value from the buffer assuming little-endian format
+  const intValue = buffer.readInt32LE(0);
+  return intValue;
+}
+
+function hexToFloatLE(hexString: string): number {
+  // Create a buffer from the hexadecimal string
+  const buffer = Buffer.from(hexString, 'hex');
+  
+  // Read the float value from the buffer assuming little-endian format
+  const floatValue = buffer.readFloatLE(0);
+  return floatValue;
+}
+
+function hexToDoubleLE(hexString: string): number {
+  // Create a buffer from the hexadecimal string
+  const buffer = Buffer.from(hexString, 'hex');
+
+  // Read the double value from the buffer assuming little-endian format
+  const doubleValue = buffer.readDoubleLE(0);
+  return doubleValue;
+}
+
+function floatToHexLE(floatValue: number): string {
+  // Create a buffer for a float
+  const buffer = Buffer.alloc(4);
+
+  // Write the float value to the buffer as little-endian
+  buffer.writeFloatLE(floatValue);
+
+  // Return the hexadecimal string representation with spaces
+  return buffer.toString('hex').match(/../g)?.join(' ') ?? '';
+}
+
+function int32ToHexLE(intValue: number): string {
+  // Create a buffer for a 32-bit integer
+  const buffer = Buffer.alloc(4);
+
+  // Write the integer value to the buffer as little-endian
+  buffer.writeInt32LE(intValue);
+
+  // Return the hexadecimal string representation with spaces
+  return buffer.toString('hex').match(/../g)?.join(' ') ?? '';
+}
+
+function doubleToHexLE(doubleValue: number): string {
+  // Create a buffer for a double
+  const buffer = Buffer.alloc(8);
+
+  // Write the double value to the buffer as little-endian
+  buffer.writeDoubleLE(doubleValue);
+
+  // Return the hexadecimal string representation with spaces
+  return buffer.toString('hex').match(/../g)?.join(' ') ?? '';
+}

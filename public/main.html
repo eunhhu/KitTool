@@ -11,9 +11,14 @@
         <div class="absolute top-1 lg:top-2 text-sm gap-0 flex" id="state">
             <button class="rounded-l-md p-1 lg:p-1.5 text-sm lg:text-md active" id="s-viewer">Viewer</button>
             <button class="p-1 lg:p-1.5 text-sm lg:text-md" id="s-compare">Compare</button>
-            <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-config">Config</button>
+            <button class="p-1 lg:p-1.5 text-sm lg:text-md" id="s-macro">Macro</button>
+            <button class="p-1 lg:p-1.5 text-sm lg:text-md" id="s-config">Config</button>
+            <button class="p-1 lg:p-1.5 text-sm lg:text-md" id="s-hotkeys">Hotkeys</button>
+            <button class="rounded-r-md p-1 lg:p-1.5 text-sm lg:text-md" id="s-debug">Debug</button>
         </div>
+        <!-- viewer -->
         <div id="v-viewer" class="v-content">
+            <!-- left screen -->
             <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 lg:gap-2 select-none">
                 <div class="each-buffer">
                     <div class="ml-8">ADDRESS</div>
@@ -39,9 +44,10 @@
                 </div>
                 <div class="w-full h-full bg-white overflow-hidden rounded-md lg:rounded-lg shadow" id="viewer"></div>
             </div>
+            <!-- right screen -->
             <div class="w-[40%] h-full flex flex-col justify-start items-center text-sm gap-1.5 lg:gap-3">
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full">
-                    <div id="handle">[Select Process]</div>
+                    <div class="handle">[Select Process]</div>
                 </div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full">
                     <button class="p-1 rounded-md pl-3 pr-3" id="open-attach">Attach</button>
@@ -77,37 +83,55 @@
                 </div>
             </div>
         </div>
+        <!-- compare -->
         <div id="v-compare" class="v-content hide">
-            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-1 select-none text-sm">
+            <div class="w-[60%] h-full overflow-hidden flex flex-col justify-center items-center gap-2 lg:gap-3 select-none text-sm">
                 <div class="w-full flex flex-col justify-center items-center gap-1">
-                    <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Library</div>
+                    <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Compares</div>
                     <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
                         <div class="w-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow h-48 overflow-y-auto overflow-x-hidden" id="compare-save">
-                            <div class="each-compare">7FF839283289</div>
+                            <div class="each-compare" id="14637717286">7FF839283289</div>
                         </div>
                     </div>
                 </div>
-                <div class="w-full h-full">
-                    <div class="">
-
+                <div class="w-full h-full flex flex-col justify-center items-center gap-1 pr-5 pl-5 lg:pr-8 lg:pl-8">
+                    <div class="flex flex-row justify-around items-center w-full font-mono text-xs">
+                        <div class="w-full text-center">00</div>
+                        <div class="w-full text-center">01</div>
+                        <div class="w-full text-center">02</div>
+                        <div class="w-full text-center">03</div>
+                        <div class="w-full text-center">04</div>
+                        <div class="w-full text-center">05</div>
+                        <div class="w-full text-center">06</div>
+                        <div class="w-full text-center">07</div>
+                        <div class="w-full text-center">08</div>
+                        <div class="w-full text-center">09</div>
+                        <div class="w-full text-center">0A</div>
+                        <div class="w-full text-center">0B</div>
+                        <div class="w-full text-center">0C</div>
+                        <div class="w-full text-center">0D</div>
+                        <div class="w-full text-center">0E</div>
+                        <div class="w-full text-center">0F</div>
                     </div>
+                    <div class="flex flex-col justify-start items-center w-full h-64 font-mono text-sm bg-neutral-50 rounded-md lg:rounded-lg overflow-hidden" id="compare-viewer"></div>
                 </div>
             </div>
             <div class="w-[40%] h-full overflow-hidden flex flex-col justify-start items-center gap-1 select-none text-sm">
+                <div class="handle">[Select Process]</div>
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Start Offset</div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
-                    <input type="text" name="" id="start-offset" class="p-1 rounded-md w-full" placeholder="Start Offset">
+                    <input type="text" name="" id="start-offset" class="p-1 rounded-md w-full" placeholder="Start Offset" disabled>
                 </div>
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">End Offset</div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
-                    <input type="text" name="" id="end-offset" class="p-1 rounded-md w-full" placeholder="End Offset">
+                    <input type="text" name="" id="end-offset" class="p-1 rounded-md w-full" placeholder="End Offset" disabled>
                 </div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8 mt-4 lg:mt-6">
                     <button class="p-1 rounded-md pl-3 pr-3" id="make-pattern">Make Pattern</button>
                 </div>
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Result</div>
                 <div class="flex flex-row justify-center items-center gap-1.5 lg:gap-2 w-full pr-5 pl-5 lg:pr-8 lg:pl-8">
-                    <input type="text" name="" id="pattern-result" class="p-1 rounded-md w-full" placeholder="Result" disabled>
+                    <input type="text" name="" id="pattern-result" class="p-1 rounded-md w-full" placeholder="Result">
                 </div>
                 <div class="flex flex-row justify-start items-center w-full pr-5 pl-5 lg:pr-8 lg:pl-8 text-neutral-500 font-semibold">Library</div>
                 <div class="w-full h-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow overflow-hidden">
@@ -120,10 +144,57 @@
                 </div>
             </div>
         </div>
+        <!-- macro -->
+        <div id="v-macro" class="v-content hide">
+            <div id="macro-viewer" class="w-[60%] h-full overflow-hidden flex flex-col justify-start items-start pt-10 p-5 gap-1.5 lg:gap-2 select-none text-sm"></div>
+            <div class="w-[40%] h-full overflow-hidden flex flex-col justify-start items-center gap-2 lg:gap-3 select-none text-sm">
+                <div class="handle">[Select Process]</div>
+                <div class="flex flex-row items-center justify-center gap-2">
+                    <button id="macro-new" class="p-1.5 lg:p-2 w-16 rounded-md">New</button>
+                    <button id="macro-save" class="p-1.5 lg:p-2 w-16 rounded-md">Save</button>
+                    <button id="macro-load" class="p-1.5 lg:p-2 w-16 rounded-md">Load</button>
+                    <button id="macro-init" class="p-1.5 lg:p-2 w-16 rounded-md">Init</button>
+                    <button id="macro-sort" class="p-1.5 lg:p-2 w-16 rounded-md">Sort</button>
+                </div>
+                <textarea class="resize-none w-full h-full rounded-md lg:rounded-lg" name="" id="macro-code"></textarea>
+                <div class="w-full pr-3 pl-3 font-bold text-neutral-500">Macro Vars</div>
+                <div id="macro-vars" class="w-full h-[50%] overflow-y-auto overflow-x-hidden bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm rounded-md"></div>
+            </div>
+        </div>
+        <!-- config -->
         <div id="v-config" class="v-content hide">
 
         </div>
+        <!-- hotkeys -->
+        <div id="v-hotkeys" class="v-content hide">
+            <div class="flex flex-col justify-start items-center p-2 lg:p-3 w-full h-full gap-1 lg:gap-1.5 overflow-y-auto overflow-x-hidden">
+                <div class="w-full text-center text-lg lg:text-xl">Change View Type to Byte : Ctrl + 1</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change View Type to Int32 : Ctrl + 2</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change View Type to Float : Ctrl + 3</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change View Type to Double : Ctrl + 4</div>
+                <div class="w-full text-center text-lg lg:text-xl">Add Address in Lib to Comparing Save Lib : Ctrl + T</div>
+                <div class="w-full text-center text-lg lg:text-xl">Goto Selected Address in Lib : Ctrl + G</div>
+                <div class="w-full text-center text-lg lg:text-xl">Open Selected Address in Lib : Enter</div>
+                <div class="w-full text-center text-lg lg:text-xl">Delete Selected Address in Lib : Delete</div>
+                <div class="w-full text-center text-lg lg:text-xl">Save Selected Addreses in Viewer : Ctrl + S</div>
+                <div class="w-full text-center text-lg lg:text-xl">Copy Selected Value to Clipboard : Ctrl + C</div>
+                <div class="w-full text-center text-lg lg:text-xl">Write Current Value : Ctrl + W or Enter</div>
+                <div class="w-full text-center text-lg lg:text-xl">Save Current Value : Ctrl + S</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change Selected Value Type to Byte : Ctrl + 1</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change Selected Value Type to Int32 : Ctrl + 2</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change Selected Value Type to Float : Ctrl + 3</div>
+                <div class="w-full text-center text-lg lg:text-xl">Change Selected Value Type to Double : Ctrl + 4</div>
+            </div>
+        </div>
+        <!-- debug -->
+        <div id="v-debug" class="v-content hide">
+            <div class="flex flex-col justify-center items-center p-2 lg:p-3 w-full h-full gap-1 lg:gap-1.5">
+                <textarea class="w-full h-full rounded" name="" id="debug-logger"></textarea>
+                <button id="call-states" class="w-full rounded p-2 lg:p-3">Call States</button>
+            </div>
+        </div>
     </div>
+    <!-- attacher -->
     <div id="attacher" class="hide w-full h-full flex flex-col justify-center items-center bg-[#0002] fixed top-0 left-0">
         <div class="rounded-md lg:rounded-lg bg-neutral-200 shadow-md w-[40%] h-[80%] p-2 lg:p-3 flex flex-col justify-center items-center gap-2 lg:gap-3">
             <div class="w-full h-full bg-neutral-50 rounded-md lg:rounded-lg flex flex-col justify-start items-center shadow overflow-x-hidden overflow-y-auto" id="process-list"></div>
@@ -133,6 +204,7 @@
             </div>
         </div>
     </div>
+    <!-- value editor -->
     <div id="editor" class="hide w-full h-full flex flex-col justify-center items-center bg-[#0002] fixed top-0 left-0">
         <div class="rounded-md lg:rounded-lg bg-neutral-200 shadow-md w-[40%] h-48 p-2 lg:p-3 flex flex-col justify-center items-center gap-2 lg:gap-3">
             <input type="text" name="" id="editor-addr" class="p-1 rounded-md w-full" placeholder="Address">
@@ -144,8 +216,8 @@
             </select>
             <input type="text" name="" id="editor-value" class="p-1 rounded-md w-full" placeholder="Value">
             <div class="p-1 w-full flex flex-row justify-center items-center gap-1 lg:gap-1.5">
-                <button class="p-1 rounded-md flex-1" id="write-editor">Write</button>
-                <button class="p-1 rounded-md flex-1" id="save-editor">Save</button>
+                <button class="p-1 rounded-md flex-1" id="write-editor">Write (Ctrl + W)</button>
+                <button class="p-1 rounded-md flex-1" id="save-editor">Save (Ctrl + S)</button>
             </div>
         </div>
     </div>

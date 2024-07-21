@@ -31,7 +31,16 @@ html, body{
 .each-save:not(.selected){@apply text-neutral-600 hover:bg-neutral-100}
 .save-list{@apply w-full h-full flex flex-col justify-start items-center overflow-x-hidden overflow-y-auto}
 .v-content{@apply w-full h-full bg-neutral-200 rounded-md lg:rounded-lg flex flex-row justify-center items-center p-2 lg:p-3 pt-6 lg:pt-8 gap-2 lg:gap-3}
-.each-compare{@apply w-full flex flex-col justify-center items-center text-neutral-600 border-b p-1}
+.each-compare{@apply w-full flex flex-col justify-center items-center border-b p-1}
+.each-cline{@apply flex flex-row justify-around items-center w-full font-mono text-xs}
+.each-cvalue{@apply w-full text-center}
+.each-cvalue.o{@apply bg-neutral-400}
+.each-cvalue.diff{@apply text-red-500}
+.error{@apply border border-red-500 hover:border-red-600 focus:border-red-500}
+.macro-element{@apply p-1.5 rounded-sm}
+div.macro-element{@apply w-full}
+button.macro-element{@apply pl-3 pr-3}
+.macro-var{@apply w-full text-neutral-600 text-center border-b border-neutral-300}
 
 button{@apply bg-neutral-50 text-neutral-600 border border-neutral-300 shadow-sm}
 button:hover{@apply bg-neutral-100 border-neutral-400}
@@ -41,10 +50,12 @@ button:disabled:hover{@apply bg-neutral-50 border-neutral-300}
 button:disabled:active{@apply bg-neutral-50 text-neutral-600}
 button.active{@apply bg-blue-400 text-white}
 
-input, select{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
-input:hover, select:hover{@apply bg-neutral-100 border-neutral-400}
-input:focus, select:focus{@apply outline-none border-2 border-blue-400}
-input:disabled, select:disabled{@apply opacity-50 cursor-not-allowed}
+input, select, textarea{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
+input:hover, select:hover, textarea:hover{@apply bg-neutral-100 border-neutral-400}
+input:focus, select:focus, textarea:focus{@apply outline-none border-2 border-blue-400}
+input:disabled, select:disabled, textarea:disabled{@apply opacity-50 cursor-not-allowed}
+
+textarea{@apply resize-none}
 
 ::-webkit-scrollbar{@apply w-3 bg-neutral-100 p-0.5}
 ::-webkit-scrollbar-button{@apply hidden}
