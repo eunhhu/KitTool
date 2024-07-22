@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
+    "dist": "electron-builder",
     "dev": "concurrently \"tsc -w\" \"npx tailwindcss -i ./public/global.css -o ./public/output.css --watch\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

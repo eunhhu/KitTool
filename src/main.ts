@@ -60,7 +60,6 @@ function parseMacro(ktmContent: string): Macro {
     let conditions:M_Condition[] = [];
     lines.forEach((line, i) => {
         const _line = line.split(' ').map(v => v.trim()).filter(v => v);
-        log(_line)
         if (_line[0] == 'element') {
             const [, type, id, propsPart] = line.match(/element (\w+):([\w\-]+) (.+)/)!;
             const props = parseProperties(propsPart);
@@ -85,7 +84,9 @@ function parseMacro(ktmContent: string): Macro {
             }
             conditions = [];
         } else if (_line[0] == 'if') {
-            const [target, type, value] = line.split(' ').slice(1).join(' ').split(/(==|!=|>|<|>=|<=)/).map(v => v.trim());
+            const cond = line.split(' ').slice(1).join(' ')
+            const [target, , value] = cond.split(/(==|!=|<=|>=|<|>)/).map(v => v.trim());
+            const type = cond.match(/(==|!=|<=|>=|<|>)/)![0] as M_ConditionType;
             let _t = target.trim();
             let _v = value.replace('{', '').trim()
             try{
@@ -127,8 +128,8 @@ function parseMacro(ktmContent: string): Macro {
         } else if (_line[0] == 'write') {
             const [key, value] = line.split(' ').slice(1).join(' ').split('=').map(v => v.trim());
             let _k = key;
-            let _v = value.split(' ')[0]
-            let _vt = value.split(' ')[2]
+            let _v = value.split(' as ')[0]
+            let _vt = value.split(' as ')[1]
             try{
                 _v = eval(_v);
             } catch(e) {
@@ -141,7 +142,7 @@ function parseMacro(ktmContent: string): Macro {
             }
             event.commands.push({
                 type: 'write',
-                target: key,
+                target: _k,
                 value: _v,
                 valueType: _vt as ValueType,
                 conditions: JSON.parse(JSON.stringify(conditions))
@@ -231,7 +232,6 @@ $_('macro-code').oninput = e => {
         parseMacro(_v);
     } catch (e) {
         ($_('macro-code') as HTMLTextAreaElement).classList.add('error');
-        log(e);
     }
 }
 $_('macro-sort').onclick = e => {}
@@ -289,8 +289,8 @@ function setObj(name:string, value:any){
 function executeMacroEventCommands(ev:M_Event){
     ev.commands.forEach((cmd:M_Command) => {
         if(cmd.conditions.every((c:M_Condition) => {
-            const t1 = Object.keys(states.m_vars).includes(c.target) ? states.m_vars[c.target] : c.target;
-            const t2 = Object.keys(states.m_vars).includes(c.value) ? states.m_vars[c.value] : c.value;
+            const t1 = evaluated(c.target);
+            const t2 = evaluated(c.value);
             if(c.type == '==') return t1 == t2;
             if(c.type == '!=') return t1 != t2;
             if(c.type == '>') return t1 > t2;
@@ -301,7 +301,7 @@ function executeMacroEventCommands(ev:M_Event){
         })){
             if(cmd.type == 'write'){
                 const _addr = evaluated(cmd.target);
-                const _val = cmd.value;
+                const _val = evaluated(cmd.value);
                 const _type = cmd.valueType;
                 ipcRenderer.send('writeMemory', _addr, _type, _val);
             } else if(cmd.type == 'change'){
@@ -312,7 +312,6 @@ function executeMacroEventCommands(ev:M_Event){
 }
 $_('macro-viewer').onclick = e => {
     const tar = e.target as HTMLElement;
-    log(tar.classList.value)
     if(tar.classList.contains('macro-element')){
         states.m_events.forEach((ev:M_Event) => {
             if(`m-${ev.target}` == tar.id && ev.type == 'click') executeMacroEventCommands(ev);
@@ -348,11 +347,14 @@ function evaluated(target: any): any {
     if(typeof target != 'string') return target;
     const _tar = target;
 
-    const read = (type:ValueType, addr:number, len?:number) => ipcRenderer.sendSync('readMemory', addr, type, len);
-  
+    const read = (type:ValueType, addr:number, len?:number) => {
+        if(states["curProcess"]) return ipcRenderer.sendSync('readMemory', addr, type, len);
+        else return null;
+    }
+
     // {} 안의 모든 패턴을 찾아 반복적으로 평가
     const regex = /{([^}]+)}/g;
-  
+
     // 사용자 정의 변환 함수를 사용하여 표현식 평가
     const evaluateExpression = (expression: string): any => {
       // 함수 호출을 실제 구현으로 재귀적으로 대체
@@ -373,7 +375,6 @@ function evaluated(target: any): any {
       });
 
       // 파싱된 표현식을 안전하게 평가하기 위해 new Function 사용
-      log(parsedExpression)
       try {
         const func = new Function('String', 'Number', 'getObj', 'read', 'return ' + parsedExpression);
         return func(String, Number, getObj, read);
@@ -386,8 +387,7 @@ function evaluated(target: any): any {
     // 대상 문자열의 각 매치를 평가된 결과로 교체
     let result = _tar;
     while (regex.test(result)) {
-    result = result.replace(regex, (_, expr) => evaluateExpression(expr));
-        log(result);
+        result = result.replace(regex, (_, expr) => evaluateExpression(expr));
     }
   
     // 전체 문자열이 표현식이었다면 결과를 적절한 타입으로 변환
