@@ -1,52 +1,12 @@
 import { ipcRenderer } from "electron";
 import { ProcessObject } from "memoryjs";
 
-type ValueType = "byte"|"int"|"float"|"double"|"string";
-type M_EventType = 'init'|'loop'|'keydown'|'keyup'|'click'
-type M_CommandType = 'write'|'change'
-type M_ConditionType = '=='|'!='|'>'|'<'|'>='|'<='
-
-interface M_Condition {
-    type:M_ConditionType;
-    target:any; // evaluated value
-    value:any; // evaluated value
-}
-
-interface M_Command {
-    type:M_CommandType;
-    target:string|number;
-    // write : evaluated value
-    // read : evaluated value
-    // change : element id or variable name
-    value:any;
-    // write : evaluated value
-    // read : binding element id or variable name
-    // change : evaluated value
-    valueType?:ValueType;
-    // write : ValueType
-    // read : ValueType
-    conditions:M_Condition[];
-}
-
-interface M_Event {
-    type:M_EventType;
-    target?:string; // if type is keydown or keyup, target is keycode. else target is element id (don't use in loop)
-    commands:M_Command[];
-}
-
-type M_ElementType = 'input'|'text'|'button';
-
-interface M_Element {
-    id:string;
-    type:M_ElementType;
-    value:string; // inner text content
-    style:string; // css style
-}
-
-interface Macro {
-    elements:M_Element[];
-    vars:{[key:string]:string};
-    events:M_Event[];
+function tryEval(str:string, els?:string):any {
+    try {
+        return eval(str);
+    } catch(e) {
+        return els || str;
+    }
 }
 
 function parseMacro(ktmContent: string): Macro {
@@ -71,11 +31,7 @@ function parseMacro(ktmContent: string): Macro {
             })
         } else if (_line[0] == 'var') {
             const [key, value] = line.split(' ').slice(1).join(' ').split('=').map(v => v.trim());
-            try{
-                vars[key] = eval(value);
-            } catch(e) {
-                vars[key] = value;
-            }
+            vars[key] = tryEval(value);
         } else if (_line[0] == 'event') {
             event = {
                 type: _line[1] as M_EventType,
@@ -87,18 +43,8 @@ function parseMacro(ktmContent: string): Macro {
             const cond = line.split(' ').slice(1).join(' ')
             const [target, , value] = cond.split(/(==|!=|<=|>=|<|>)/).map(v => v.trim());
             const type = cond.match(/(==|!=|<=|>=|<|>)/)![0] as M_ConditionType;
-            let _t = target.trim();
-            let _v = value.replace('{', '').trim()
-            try{
-                _t = eval(target.trim());
-            } catch(e) {
-                _t = target.trim();
-            }
-            try{
-                _v = eval(value.replace('{', '').trim());
-            } catch(e) {
-                _v = value.replace('{', '').trim();
-            }
+            let _t = tryEval(target.trim());
+            let _v = tryEval(value.replace('{', '').trim())
             conditions.push({
                 type: type as M_ConditionType,
                 target: _t,
@@ -113,12 +59,7 @@ function parseMacro(ktmContent: string): Macro {
             }
         } else if (_line[0] == 'change') {
             const [key, value] = line.split(' ').slice(1).join(' ').split('=').map(v => v.trim());
-            let _value = value;
-            try {
-                _value = eval(value);
-            } catch(e) {
-                _value = value;
-            }
+            let _value = tryEval(value);
             event.commands.push({
                 type: 'change',
                 target: key,
@@ -127,19 +68,9 @@ function parseMacro(ktmContent: string): Macro {
             })
         } else if (_line[0] == 'write') {
             const [key, value] = line.split(' ').slice(1).join(' ').split('=').map(v => v.trim());
-            let _k = key;
-            let _v = value.split(' as ')[0]
+            let _k = tryEval(key)
+            let _v = tryEval(value.split(' as ')[0])
             let _vt = value.split(' as ')[1]
-            try{
-                _v = eval(_v);
-            } catch(e) {
-                _v = value.split(' ')[0];
-            }
-            try{
-                _k = eval(key);
-            } catch(e) {
-                _k = key;
-            }
             event.commands.push({
                 type: 'write',
                 target: _k,
@@ -148,7 +79,7 @@ function parseMacro(ktmContent: string): Macro {
                 conditions: JSON.parse(JSON.stringify(conditions))
             })
         } else {
-            console.warn(`Unknown line: ${i + 1} - ${line}`);
+            console.error(`Unknown line: ${i + 1} - ${line}`);
         }
     })
 
@@ -171,6 +102,7 @@ function parseProperties(propsPart: string): { [key: string]: string } {
 
 const log = (...args: any[]) => ipcRenderer.send("log", args);
 const emit = (event: string, ...args: any[]):void => {ipcRenderer.send(event, args)};
+const emitSync = (event: string, ...args: any[]):any => {ipcRenderer.sendSync(event, args)};
 const on = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.on(event, callback)};
 const once = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.once(event, callback)};
 const off = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.off(event, callback)};
@@ -187,12 +119,13 @@ const debug = (obj:any) => {
     ($_('debug-logger') as HTMLTextAreaElement).value = JSON.stringify(obj, null, 2) + '\n';
 }
 
-emit('init');
 
 let config:{[key:string]:any} = {
     "tick": 500,
     "macroTick": 1000/60
 }
+
+emit('init', config);
 
 let states:{[key:string]:any} = {
     state : 'viewer',
@@ -215,8 +148,6 @@ let states:{[key:string]:any} = {
     compareOffset: 0, // comparing view offset
     macroText: "",
     m_elements: [], // HTML Elements
-    m_vars: {}, // Working Variables
-    m_events: [], // Events
 };
 $_('call-states').onclick = e => {debug(states)};
 ($_('macro-code') as HTMLTextAreaElement).value = "";
@@ -234,6 +165,103 @@ $_('macro-code').oninput = e => {
         ($_('macro-code') as HTMLTextAreaElement).classList.add('error');
     }
 }
+$_('macro-code').onkeydown = e => {
+    const tar:HTMLTextAreaElement = (e.target as HTMLTextAreaElement)
+    const start = tar.selectionStart;
+    const end = tar.selectionEnd;
+    const _v = tar.value; // value
+    const _s = _v.substring(0, start); // start value
+    const _m = _v.substring(start, end); // middle value
+    const _e = _v.substring(end); // end value
+    const _l = _v.split('\n'); // lines
+    const _sl = _s.split('\n').length - 1; // start line offset
+    const _el = _v.substring(0, end).split('\n').length - 1; // end line offset
+    const _c = _l[_sl]; // current line
+    const _sp = _s.split('\n')[_sl].length; // start position offset
+    const _ep = _v.substring(0, end).split('\n')[_el].length; // end position offset
+    const _sc = _c.substring(0, _sp); // start current
+    const _ec = _c.substring(0, _ep); // end current
+    const _sce = _c.substring(_sp); // start current end
+    const _ece = _c.substring(_ep); // end current end
+    const _t = _c.split(' ').map(v => v.trim()).filter(v => v); // tokens
+    const spaced = _sc.match(/^ +$/);
+    const curTabbed:number = _sc.split('  ').length - 1;
+    const shiftedBL = e.shiftKey ? '{' : '[';
+    const shiftedBR = e.shiftKey ? '}' : ']';
+    const shiftedQ = e.shiftKey ? '"' : "'";
+    const makeTab = (n:number) => '  '.repeat(n);
+    const insertGrouped = (l:string, r:string) => {
+        if(start == end){
+            e.preventDefault();
+            tar.value = _s + l + r + _e;
+            tar.selectionStart = tar.selectionEnd = start + 1;
+        } else {
+            e.preventDefault();
+            tar.value = _s + l + _m + r + _e;
+            tar.selectionStart = start + 1;
+            tar.selectionEnd = end + 1;
+        }
+    }
+    if (e.code == 'Tab'){
+        e.preventDefault();
+        if(_sl == _el){
+            tar.value = _s + '  ' + _e;
+            tar.selectionStart = tar.selectionEnd = start + 2;
+        } else {
+            const _n = _l.slice(_sl, _el+1).map(v => '  ' + v).join('\n');
+            tar.value = _s + _n + _e;
+        }
+    } else if (e.code == 'Enter'){
+        if(e.ctrlKey){
+            e.preventDefault();
+            $_('macro-init').click();
+        } else if(_v[start-1] == '{'){
+            e.preventDefault();
+            if(_v[end] == '}'){
+                tar.value = _s + '\n' + makeTab(1 + curTabbed) + 
+                '\n' + makeTab(curTabbed) + _e;
+            } else {
+                tar.value = _s + '\n' + makeTab(1 + curTabbed) + _e;
+            }
+            tar.selectionStart = tar.selectionEnd = start + 1 + (2 * (1 + curTabbed));
+        } else if(curTabbed){
+            e.preventDefault();
+            tar.value = _s + '\n' + makeTab(curTabbed) + _e;
+            tar.selectionStart = tar.selectionEnd = start + 1 + 2 * curTabbed;
+        }
+    } else if(e.code == 'Backspace'){
+        if(spaced){
+            if(spaced[0].length > 1){
+                e.preventDefault();
+                tar.value = _s.slice(0, -2) + _e;
+                tar.selectionStart = tar.selectionEnd = start - 2;
+            }
+        } else if(start == end &&
+            (_v[start-1] == '{' && _v[end] == '}' ||
+            _v[start-1] == '[' && _v[end] == ']' ||
+            _v[start-1] == '(' && _v[end] == ')' ||
+            _v[start-1] == '"' && _v[end] == '"' ||
+            _v[start-1] == "'" && _v[end] == "'")){
+            e.preventDefault();
+            tar.value = _s.slice(0, -1) + _v.substring(end+1);
+            tar.selectionStart = tar.selectionEnd = start - 1;
+        }
+    } else if(e.code == 'BracketLeft'){
+        insertGrouped(shiftedBL, shiftedBR);
+    } else if(e.code == 'BracketRight' && e.shiftKey){
+        if(spaced){
+            if(spaced[0].length > 1){
+                e.preventDefault();
+                tar.value = _s.slice(0, -2) + '}' + _e;
+                tar.selectionStart = tar.selectionEnd = start - 1;
+            }
+        }
+    } else if(e.code == 'Quote'){
+        insertGrouped(shiftedQ, shiftedQ);
+    } else if(e.code == 'Digit9' && e.shiftKey){
+        insertGrouped('(', ')');
+    }
+}
 $_('macro-sort').onclick = e => {}
 $_('macro-save').onclick = e => {
     emit('saveMacro', states.macroText);
@@ -247,8 +275,6 @@ $_('macro-load').onclick = e => {
 }
 $_('macro-init').onclick = e => {
     states.m_elements = [];
-    states.m_vars = {};
-    states.m_events = [];
     $_('macro-viewer').innerHTML = '';
     const macro = parseMacro(($_('macro-code') as HTMLTextAreaElement).value);
     macro.elements.forEach((el:M_Element) => {
@@ -258,151 +284,49 @@ $_('macro-init').onclick = e => {
         states.m_elements.push(el);
         $_('macro-viewer').appendChild(_el);
     })
-    Object.keys(macro.vars).forEach(key => {
-        states.m_vars[key] = macro.vars[key];
-    })
-    states.m_events = macro.events;
-    updateMacroVars();
+    ipcRenderer.send('initMacro', macro);
 }
-function getObj(name:string):any{
-    if(Object.keys(states.m_vars).includes(name)) return states.m_vars[name];
-    const _f = states.m_elements.find((v:M_Element) => v.id == name)
+
+on('getElement', (e, id:string) => {
+    const _f = states.m_elements.find((v:M_Element) => v.id == id);
     if(_f) {
-        const _el = $_(`m-${name}`);
-        if(_el instanceof HTMLInputElement) return _el.value;
-        else return _el.textContent;
+        const _el = $_(`m-${id}`);
+        if(_el instanceof HTMLInputElement) e.sender.send('getElement', _el.value);
+        else e.sender.send('getElement', _el.textContent);
     }
-    return null;
-}
-function setObj(name:string, value:any){
-    if(Object.keys(states.m_vars).includes(name)){
-        states.m_vars[name] = value;
-        updateMacroVars();
-    }
-    const _f = states.m_elements.find((v:M_Element) => v.id == name)
-    if(_f) {
-        const _el = $_(`m-${name}`);
-        if(_el instanceof HTMLInputElement) _el.value = value;
-        else _el.textContent = value;
-    }
-}
-function executeMacroEventCommands(ev:M_Event){
-    ev.commands.forEach((cmd:M_Command) => {
-        if(cmd.conditions.every((c:M_Condition) => {
-            const t1 = evaluated(c.target);
-            const t2 = evaluated(c.value);
-            if(c.type == '==') return t1 == t2;
-            if(c.type == '!=') return t1 != t2;
-            if(c.type == '>') return t1 > t2;
-            if(c.type == '<') return t1 < t2;
-            if(c.type == '>=') return t1 >= t2;
-            if(c.type == '<=') return t1 <= t2;
-            return false;
-        })){
-            if(cmd.type == 'write'){
-                const _addr = evaluated(cmd.target);
-                const _val = evaluated(cmd.value);
-                const _type = cmd.valueType;
-                ipcRenderer.send('writeMemory', _addr, _type, _val);
-            } else if(cmd.type == 'change'){
-                setObj(`${cmd.target}`, evaluated(cmd.value));
-            }
-        }
-    })
-}
-$_('macro-viewer').onclick = e => {
-    const tar = e.target as HTMLElement;
-    if(tar.classList.contains('macro-element')){
-        states.m_events.forEach((ev:M_Event) => {
-            if(`m-${ev.target}` == tar.id && ev.type == 'click') executeMacroEventCommands(ev);
-        })
-    }
-}
-$_('macro-viewer').oninput = e => {
-    const tar = e.target as HTMLInputElement;
-    if(tar.classList.contains('macro-element') && tar.type == 'text'){
-        states.m_events.forEach((ev:M_Event) => {
-            if(`m-${ev.target}` == tar.id && ev.type == 'init') executeMacroEventCommands(ev);
-        })
-    };
-}
-window.onkeydown = e => {
-    states.m_events.forEach((ev:M_Event) => {
-        if(ev.target == e.code && ev.type == 'keydown') executeMacroEventCommands(ev);
-    })
-}
-window.onkeyup = e => {
-    states.m_events.forEach((ev:M_Event) => {
-        if(ev.target == e.code && ev.type == 'keyup') executeMacroEventCommands(ev);
-    })
-}
-function loopMacro(){
-    states.m_events.forEach((ev:M_Event) => {
-        if(ev.type == 'loop') executeMacroEventCommands(ev);
-    })
-    setTimeout(loopMacro, config["macroTick"]);
-}
-loopMacro();
-function evaluated(target: any): any {
-    if(typeof target != 'string') return target;
-    const _tar = target;
+})
 
-    const read = (type:ValueType, addr:number, len?:number) => {
-        if(states["curProcess"]) return ipcRenderer.sendSync('readMemory', addr, type, len);
-        else return null;
-    }
-
-    // {} 안의 모든 패턴을 찾아 반복적으로 평가
-    const regex = /{([^}]+)}/g;
-
-    // 사용자 정의 변환 함수를 사용하여 표현식 평가
-    const evaluateExpression = (expression: string): any => {
-      // 함수 호출을 실제 구현으로 재귀적으로 대체
-      const parsedExpression = expression.replace(/([\w\*14]+)\(/g, (match, p1) => {
-        switch (p1) {
-          case 's': return 'String(';
-          case 'n': return 'Number(';
-          case 'b': return '((value) => value === \'true\')('; // 불리언 변환
-          case 'x': return '((value) => value.toString(16))('; // 16진수 문자열 변환
-          case 'i': return '((value) => parseInt(value, 16))('; // 문자열을 16진수로 파싱
-          case '*': return 'getObj('; // 예시를 위한 직접 매핑
-          case '1': return 'read("byte",'; // 예시를 위한 직접 매핑
-          case '4': return 'read("int",'; // 예시를 위한 직접 매핑
-          case 'f': return 'read("float",'; // 예시를 위한 직접 매핑
-          case 'd': return 'read("double",'; // 예시를 위한 직접 매핑
-          default: return match; // 알 수 없는 함수는 변환 없이 그대로 둠
-        }
-      });
-
-      // 파싱된 표현식을 안전하게 평가하기 위해 new Function 사용
-      try {
-        const func = new Function('String', 'Number', 'getObj', 'read', 'return ' + parsedExpression);
-        return func(String, Number, getObj, read);
-    } catch (err) {
-        console.error('표현식 평가 중 오류 발생:', expression, err);
-        return '';
-    }
-    };
-
-    // 대상 문자열의 각 매치를 평가된 결과로 교체
-    let result = _tar;
-    while (regex.test(result)) {
-        result = result.replace(regex, (_, expr) => evaluateExpression(expr));
-    }
-  
-    // 전체 문자열이 표현식이었다면 결과를 적절한 타입으로 변환
-    if (result.match(/^[\d.]+$/)) return Number(result);
-    if (result === 'true' || result === 'false') return result === 'true';
-    return result;
-}
-function updateMacroVars(){
+on('updateVars', (e, vars:{[key:string]:any}) => {
     $_('macro-vars').innerHTML = '';
-    Object.keys(states.m_vars).forEach(key => {
-        const el = create('div', `${key} : ${states.m_vars[key]}`, 'macro-var');
+    Object.keys(vars).forEach(key => {
+        const el = create('div', `${key} : ${vars[key]}`, 'macro-var');
         el.id = key;
         $_('macro-vars').appendChild(el);
     })
+})
+
+$_('macro-viewer').onclick = e => { // click event
+    const tar = e.target as HTMLElement;
+    if(tar.classList.contains('macro-element')){
+        emit('clickElement', tar.id);
+    }
 }
+$_('macro-viewer').oninput = e => { // input event
+    const tar = e.target as HTMLInputElement;
+    if(tar.classList.contains('macro-element') && tar.type == 'text'){
+        emit('inputElement', tar.id, tar.value);
+    };
+}
+// window.onkeydown = e => {
+//     states.m_events.forEach((ev:M_Event) => {
+//         if(ev.target == e.code && ev.type == 'keydown') executeMacroEventCommands(ev);
+//     })
+// }
+// window.onkeyup = e => {
+//     states.m_events.forEach((ev:M_Event) => {
+//         if(ev.target == e.code && ev.type == 'keyup') executeMacroEventCommands(ev);
+//     })
+// }
 
 $_('state').onclick = (e) => {
     const tar:Element = e.target as Element;
@@ -427,6 +351,7 @@ $_('open-attach').onclick = e => {
             $_('process-list').appendChild(_el);
         })
     })
+    $_('search-process').focus();
 }
 
 // Search Process
@@ -777,6 +702,23 @@ $_('editor').onmousedown = e => {if(e.target == e.currentTarget) closeEditor();}
 
 // global key event
 document.onkeydown = async e => {
+    if(e.key == '1' && e.altKey){
+        $_('s-viewer').click();
+    } else if(e.key == '2' && e.altKey){
+        $_('s-compare').click();
+    } else if(e.key == '3' && e.altKey){
+        $_('s-macro').click();
+    } else if(e.key == '4' && e.altKey){
+        $_('s-config').click();
+    } else if(e.key == '5' && e.altKey){
+        $_('s-hotkeys').click();
+    } else if(e.key == '6' && e.altKey){
+        $_('s-debug').click();
+    } else if(e.key == 'a' && e.altKey){
+        $_('open-attach').click();
+    } else if(e.key == 'd' && e.altKey){
+        $_('detach').click();
+    }
     const _ = $_('selected-type') as HTMLSelectElement;
     if(states["selectedLib"][0] == -1){
         if(e.key == '1' && e.ctrlKey){
@@ -861,7 +803,7 @@ document.onkeydown = async e => {
                 loadLib();
                 ($_('editor-addr') as HTMLInputElement).value = _tr.addr.toString(16).toUpperCase();
                 ($_('editor-type') as HTMLSelectElement).value = _tr.type;
-                const _val = ipcRenderer.sendSync('readMemory', _tr.addr, _tr.type, _tr.len);
+                const _val = emitSync('readMemory', _tr.addr, _tr.type, _tr.len);
                 ($_('editor-value') as HTMLInputElement).value = _val;
                 ($_('editor-value') as HTMLInputElement).focus();
                 ($_('editor-value') as HTMLInputElement).select();
@@ -978,7 +920,7 @@ $_('editor-addr').oninput = e => {
     const _type = ($_('editor-type') as HTMLSelectElement).value;
     const _addr = parseInt(_.value, 16);
     const _len = states["lib"][states["isEditing"]].len;
-    _val.value = ipcRenderer.sendSync('readMemory', _addr, _type, _len);
+    _val.value = emitSync('readMemory', _addr, _type, _len);
 }
 
 ($_('editor-type') as HTMLSelectElement).oninput = e => {
@@ -987,7 +929,7 @@ $_('editor-addr').oninput = e => {
     const _type = _.value;
     const _addr = parseInt(($_('editor-addr') as HTMLInputElement).value, 16);
     const _len = states["lib"][states["isEditing"]].len;
-    _val.value = ipcRenderer.sendSync('readMemory', _addr, _type, _len);
+    _val.value = emitSync('readMemory', _addr, _type, _len);
 }
 
 $_('save-editor').onclick = e => {

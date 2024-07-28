@@ -36,11 +36,12 @@ html, body{
 .each-cvalue{@apply w-full text-center}
 .each-cvalue.o{@apply bg-neutral-400}
 .each-cvalue.diff{@apply text-red-500}
-.error{@apply border border-red-500 hover:border-red-600 focus:border-red-500}
+.error{@apply border-2 border-red-500 hover:border-red-600 focus:border-none focus:outline-red-500}
 .macro-element{@apply p-1.5 rounded-sm}
 div.macro-element{@apply w-full}
 button.macro-element{@apply pl-3 pr-3}
 .macro-var{@apply w-full text-neutral-600 text-center border-b border-neutral-300}
+.hk > div{@apply w-full text-center text-lg lg:text-xl}
 
 button{@apply bg-neutral-50 text-neutral-600 border border-neutral-300 shadow-sm}
 button:hover{@apply bg-neutral-100 border-neutral-400}
@@ -50,12 +51,13 @@ button:disabled:hover{@apply bg-neutral-50 border-neutral-300}
 button:disabled:active{@apply bg-neutral-50 text-neutral-600}
 button.active{@apply bg-blue-400 text-white}
 
-input, select, textarea{@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
-input:hover, select:hover, textarea:hover{@apply bg-neutral-100 border-neutral-400}
-input:focus, select:focus, textarea:focus{@apply outline-none border-2 border-blue-400}
+input, select, textarea:not(.editor){@apply bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-sm}
+input:hover, select:hover, textarea:hover:not(.editor){@apply bg-neutral-100 border-neutral-400}
+input:focus, select:focus, textarea:focus{@apply outline-blue-400}
 input:disabled, select:disabled, textarea:disabled{@apply opacity-50 cursor-not-allowed}
 
 textarea{@apply resize-none}
+textarea.editor{@apply bg-neutral-800 text-neutral-100}
 
 ::-webkit-scrollbar{@apply w-3 bg-neutral-100 p-0.5}
 ::-webkit-scrollbar-button{@apply hidden}

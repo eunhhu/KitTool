@@ -1,7 +1,37 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
-import { readFileSync, writeFileSync } from "fs";
+import { read, readFileSync, writeFileSync } from "fs";
 import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject, T_FLOAT, T_INT, T_DOUBLE, T_STRING, DataType } from "memoryjs";
+
+
+ipcMain.handle('readMemory', (e, addr, type, len) => {
+  if(!prc) return;
+  return rdm(addr, type, len)
+})
+function rdm(addr:string|number, type:ValueType, len:number):any{
+  return type == 'byte' ? readBuffer(+addr, +len) : readMemory(prc.handle, +addr, type)
+}
+
+ipcMain.on('writeMemory', (e, addr, type, value, len) => {
+  if(!prc) return;
+  wrm(addr, type, value, len)
+})
+function wrm(addr:string|number, type:ValueType, value:any, len?:number):void{
+  const _ = type == 'byte' ? value :
+    type == 'int' ? int32ToHexLE(+value) :
+    type == 'float' ? floatToHexLE(+value) :
+    type == 'double' ? doubleToHexLE(+value) : value;
+  writeBuffer(+addr, _)
+}
+
+ipcMain.handle('readBuffer', (e, addr, size) => {
+  return readBuffer(+addr, +size)
+})
+
+ipcMain.on('writeBuffer', (e, addr, buffer) => {
+  writeBuffer(+addr, buffer)
+})
+
 
 const createWindow = (id:string) => {
   const main = new BrowserWindow({
@@ -26,6 +56,106 @@ const createWindow = (id:string) => {
 };
 
 let prc:ProcessObject|null = null;
+let config:{[key:string]:any} = {};
+let m_vars:{[key:string]:any} = {};
+let m_events:{[key:string]:any}[] = [];
+
+function macroLoop(){
+  setTimeout(macroLoop, config['macroTick']);
+}
+
+function getObj(name:string):any{
+  if(Object.keys(m_vars).includes(name)) return m_vars[name];
+  ipcMain.emit('getElement', name)
+  ipcMain.once('getElement', (e, [data]) => {
+    return data;
+  })
+}
+
+function setObj(name:string, value:any){
+  if(Object.keys(m_vars).includes(name)){
+    m_vars[name] = value;
+    ipcMain.emit('updateVar', m_vars)
+  }
+}
+
+function executeMacroEventCommands(ev:M_Event){
+  ev.commands.forEach((cmd:M_Command) => {
+      if(cmd.conditions.every((c:M_Condition) => {
+          const t1 = evaluated(c.target);
+          const t2 = evaluated(c.value);
+          if(c.type == '==') return t1 == t2;
+          if(c.type == '!=') return t1 != t2;
+          if(c.type == '>') return t1 > t2;
+          if(c.type == '<') return t1 < t2;
+          if(c.type == '>=') return t1 >= t2;
+          if(c.type == '<=') return t1 <= t2;
+          return false;
+      })){
+          if(cmd.type == 'write'){
+              const _addr = evaluated(cmd.target);
+              const _val = evaluated(cmd.value);
+              const _type = cmd.valueType;
+              wrm(_addr, _type, _val);
+          } else if(cmd.type == 'change'){
+              setObj(`${cmd.target}`, evaluated(cmd.value));
+          }
+      }
+  })
+}
+
+function evaluated(target: any): any {
+  if(typeof target != 'string') return target;
+  const _tar = target;
+
+  const read = (type:ValueType, addr:number, len?:number) => {
+    if(prc) return rdm(addr, type, len);
+    else return null;
+  }
+
+  // {} 안의 모든 패턴을 찾아 반복적으로 평가
+  const regex = /{([^}]+)}/g;
+
+  // 사용자 정의 변환 함수를 사용하여 표현식 평가
+  const evaluateExpression = (expression: string): any => {
+    // 함수 호출을 실제 구현으로 재귀적으로 대체
+    const parsedExpression = expression.replace(/([\w\*14]+)\(/g, (match, p1) => {
+      switch (p1) {
+        case 's': return 'String(';
+        case 'n': return 'Number(';
+        case 'b': return '((value) => value === \'true\')('; // 불리언 변환
+        case 'x': return '((value) => value.toString(16))('; // 16진수 문자열 변환
+        case 'i': return '((value) => parseInt(value, 16))('; // 문자열을 16진수로 파싱
+        case '*': return 'getObj('; // 예시를 위한 직접 매핑
+        case '1': return 'read("byte",'; // 예시를 위한 직접 매핑
+        case '4': return 'read("int",'; // 예시를 위한 직접 매핑
+        case 'f': return 'read("float",'; // 예시를 위한 직접 매핑
+        case 'd': return 'read("double",'; // 예시를 위한 직접 매핑
+        default: return match; // 알 수 없는 함수는 변환 없이 그대로 둠
+      }
+    });
+
+    // 파싱된 표현식을 안전하게 평가하기 위해 new Function 사용
+    try {
+      const func = new Function('String', 'Number', 'getObj', 'read', 'return ' + parsedExpression);
+      return func(String, Number, getObj, read);
+    } catch (err) {
+      console.error('표현식 평가 중 오류 발생:', expression, err);
+      return '';
+    }
+  };
+
+  // 대상 문자열의 각 매치를 평가된 결과로 교체
+  let result = _tar;
+  while (regex.test(result)) {
+      result = result.replace(regex, (_, expr) => evaluateExpression(expr));
+  }
+
+  // 전체 문자열이 표현식이었다면 결과를 적절한 타입으로 변환
+  if (result.match(/^[\d.]+$/)) return Number(result);
+  if (result === 'true' || result === 'false') return result === 'true';
+  return result;
+}
 
 const readBuffer = (addr:number, size:number) => {
   let buffer = ''
@@ -45,8 +175,22 @@ const writeBuffer = (addr:number, buffer:string) => {
 app.whenReady().then(async () => {
   const main = createWindow("main");
 
-  ipcMain.on('init', () => {
+  ipcMain.on('init', (e, con:{[key:string]:any}) => {
     prc = null;
+    config = con;
+    macroLoop()
+  })
+
+  ipcMain.on('clickElement', (e, [id]) => {
+    m_events.forEach((ev:M_Event) => {
+      if(`m-${ev.target}` == id && ev.type == 'click') executeMacroEventCommands(ev);
+    })
+  })
+
+  ipcMain.on('inputElement', (e, [id]) => {
+    m_events.forEach((ev:M_Event) => {
+      if(`m-${ev.target}` == id && ev.type == 'init') executeMacroEventCommands(ev);
+    })
   })
 
   ipcMain.on('getProcesses', () => {
@@ -182,28 +326,6 @@ app.on("window-all-closed", () => {
 ipcMain.on("log", (event, args) => {
   console.log(...args);
 });
-
-ipcMain.on('readMemory', (e, addr, type, len) => {
-  if(!prc) return;
-  e.returnValue = type == 'byte' ? readBuffer(+addr, +len) : readMemory(prc.handle, +addr, type)
-})
-
-ipcMain.on('writeMemory', (e, addr, type, value, len) => {
-  if(!prc) return;
-  const _ = type == 'byte' ? value :
-    type == 'int' ? int32ToHexLE(+value) :
-    type == 'float' ? floatToHexLE(+value) :
-    type == 'double' ? doubleToHexLE(+value) : value;
-  e.returnValue = writeBuffer(+addr, _)
-})
-
-ipcMain.on('readBuffer', (e, addr, size) => {
-  e.returnValue = readBuffer(+addr, +size)
-})
-
-ipcMain.on('writeBuffer', (e, addr, buffer) => {
-  writeBuffer(+addr, buffer)
-})
 
 function hexToInt32LE(hexString: string): number {
   // Create a buffer from the hexadecimal string
