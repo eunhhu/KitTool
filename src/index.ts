@@ -1,12 +1,17 @@
 import { app, BrowserWindow, ipcMain, dialog, clipboard, globalShortcut } from "electron";
 import path from "path";
-import { read, readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject, T_FLOAT, T_INT, T_DOUBLE, T_STRING, DataType } from "memoryjs";
 
 ipcMain.on('readMemory', (e, addr, type, len) => {
   if(!prc) return;
   e.returnValue = rdm(addr, type, len)
 })
+
+const read = (type:ValueType, addr:number):any => {
+  if(!prc) return null;
+  return type == 'byte' ? readBuffer(addr, 1) : readMemory(prc.handle, addr, type)
+}
 
 const rdm = (addr:string|number, type:ValueType, len:number):any => {
   if(!prc) return null;
@@ -125,7 +130,7 @@ app.whenReady().then(async () => {
     });
     // 파싱된 표현식을 안전하게 평가하기 위해 new Function 사용
     const func = new Function('String', 'Number', 'getObj', 'read', 'return ' + parsedExpression);
-    return func(String, Number, getObj, rdm);
+    return func(String, Number, getObj, read);
   };
 
   const evalStr = (target: any): any => {
