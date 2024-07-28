@@ -307,7 +307,8 @@ app.whenReady().then(async () => {
   ipcMain.on('loadCompare', (e, [addrs, idx, lineCount, offset]) => {
     const lines:{value:string;o:boolean;diff:boolean;}[][] = []
     const _addrs:number[] = addrs as number[]
-    const _omaps:string[][] = addrs.filter((v:number, i:number) => i != idx).map((v:number) => readBuffer(v + offset, 0x10 * lineCount).split(' ').filter(v => v.trim()))
+    const _omaps:string[][] = addrs.filter((v:number, i:number) => i != idx)
+    .map((v:number) => readBuffer(v + offset, 0x10 * lineCount).split(' ').filter(v => v.trim()))
     for (let i = 0; i < lineCount; i++) {
       lines.push(readBuffer(_addrs[idx] + (i * 0x10) + offset, 0x10).split(' ').filter(v => v.trim()).map((v, j) => {
         return {
@@ -323,7 +324,7 @@ app.whenReady().then(async () => {
   ipcMain.on('saveMacro', async (e, [macro]) => {
     const {canceled, filePath} = await dialog.showSaveDialog(main, {
       title: 'Save Macro',
-      filters: [{name: 'Macro', extensions: ['ktm']}]
+      filters: [{name: 'Macro Script', extensions: ['kts']}]
     });
     if(canceled) return;
     writeFileSync(filePath, macro, 'utf-8');
@@ -332,7 +333,7 @@ app.whenReady().then(async () => {
   ipcMain.on('loadMacro', async (e) => {
     const {canceled, filePaths} = await dialog.showOpenDialog(main, {
       title: 'Load Macro',
-      filters: [{name: 'Macro', extensions: ['ktm']}]
+      filters: [{name: 'Macro Script', extensions: ['kts']}]
     });
     if(canceled) return;
     const macro = readFileSync(filePaths[0], 'utf-8');
