@@ -119,7 +119,6 @@ const debug = (obj:any) => {
     ($_('debug-logger') as HTMLTextAreaElement).value = JSON.stringify(obj, null, 2) + '\n';
 }
 
-
 let config:{[key:string]:any} = {
     "tick": 500,
     "macroTick": 1000/60
@@ -149,7 +148,10 @@ let states:{[key:string]:any} = {
     macroText: "",
     m_elements: [], // HTML Elements
 };
-$_('call-states').onclick = e => {debug(states)};
+$_('call-states').onclick = e => {
+    debug(states)
+    emit('debug', 'console.log(m_elements, m_vars, JSON.stringify(m_events, null, 2))')
+};
 ($_('macro-code') as HTMLTextAreaElement).value = "";
 $_('macro-new').onclick = e => {
     states.macroText = '';
@@ -165,6 +167,7 @@ $_('macro-code').oninput = e => {
         ($_('macro-code') as HTMLTextAreaElement).classList.add('error');
     }
 }
+// editor auto complete
 $_('macro-code').onkeydown = e => {
     const tar:HTMLTextAreaElement = (e.target as HTMLTextAreaElement)
     const start = tar.selectionStart;
@@ -262,6 +265,7 @@ $_('macro-code').onkeydown = e => {
         insertGrouped('(', ')');
     }
 }
+
 $_('macro-sort').onclick = e => {}
 $_('macro-save').onclick = e => {
     emit('saveMacro', states.macroText);
@@ -281,22 +285,23 @@ $_('macro-init').onclick = e => {
         const _el = create(el.type == 'text' ? 'div' : el.type, el.value, 'macro-element');
         _el.id = `m-${el.id}`;
         _el.style.cssText = el.style;
+        if(el.type == 'input') (_el as HTMLInputElement).value = el.value;
         states.m_elements.push(el);
         $_('macro-viewer').appendChild(_el);
     })
-    ipcRenderer.send('initMacro', macro);
+    emit('initMacro', macro);
 }
 
-on('getElement', (e, id:string) => {
+on('setElement', (e, id:string, value:string) => {
     const _f = states.m_elements.find((v:M_Element) => v.id == id);
-    if(_f) {
+    if(_f){
         const _el = $_(`m-${id}`);
-        if(_el instanceof HTMLInputElement) e.sender.send('getElement', _el.value);
-        else e.sender.send('getElement', _el.textContent);
+        if(_el instanceof HTMLInputElement) _el.value = value;
+        else _el.textContent = value;
     }
 })
 
-on('updateVars', (e, vars:{[key:string]:any}) => {
+on('updateVar', (e, vars:{[key:string]:any}) => {
     $_('macro-vars').innerHTML = '';
     Object.keys(vars).forEach(key => {
         const el = create('div', `${key} : ${vars[key]}`, 'macro-var');
@@ -317,16 +322,6 @@ $_('macro-viewer').oninput = e => { // input event
         emit('inputElement', tar.id, tar.value);
     };
 }
-// window.onkeydown = e => {
-//     states.m_events.forEach((ev:M_Event) => {
-//         if(ev.target == e.code && ev.type == 'keydown') executeMacroEventCommands(ev);
-//     })
-// }
-// window.onkeyup = e => {
-//     states.m_events.forEach((ev:M_Event) => {
-//         if(ev.target == e.code && ev.type == 'keyup') executeMacroEventCommands(ev);
-//     })
-// }
 
 $_('state').onclick = (e) => {
     const tar:Element = e.target as Element;
@@ -702,6 +697,17 @@ $_('editor').onmousedown = e => {if(e.target == e.currentTarget) closeEditor();}
 
 // global key event
 document.onkeydown = async e => {
+    if(e.code != 'AltLeft' && e.code != 'AltRight' && e.altKey){
+        e.preventDefault();
+        if(e.code == 'KeyA') $_('open-attach').click();
+        else if(e.code == 'KeyD') $_('detach').click();
+        else if(e.code.startsWith('Digit')){
+            const _ = e.code.split('Digit')[1];
+            $$(`#state > button`).forEach((v, i) => {
+                if(i == parseInt(_)-1) v.click();
+            })
+        }
+    }
     if(e.key == '1' && e.altKey){
         $_('s-viewer').click();
     } else if(e.key == '2' && e.altKey){
@@ -714,10 +720,6 @@ document.onkeydown = async e => {
         $_('s-hotkeys').click();
     } else if(e.key == '6' && e.altKey){
         $_('s-debug').click();
-    } else if(e.key == 'a' && e.altKey){
-        $_('open-attach').click();
-    } else if(e.key == 'd' && e.altKey){
-        $_('detach').click();
     }
     const _ = $_('selected-type') as HTMLSelectElement;
     if(states["selectedLib"][0] == -1){
@@ -873,9 +875,6 @@ document.onkeydown = async e => {
                 const addr = parseInt(states["selectedBuffer"][0], 16);
                 const len = states["selectedBuffer"][1];
                 emit('copy', addr, len);
-                once('copy', (e, buffer:string) => {
-                    navigator.clipboard.writeText(buffer);
-                })
             } else if(states["selectedAddress"]){
                 navigator.clipboard.writeText(states["selectedAddress"]);
             }
