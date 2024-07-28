@@ -96,11 +96,11 @@ event [eventType] [name?] {
   [commands or conditions]
 }
 ```
-- {name} doesn't need if eventType is loop.
+- [name] doesn't need if eventType is loop.
 
 |Key|Value|
 |:---:|:---:|
-|eventType|loop|
+|eventType|loop \| click \| init \| keydown \| keypress|
 |name|var name \| element id|
 - Example :
 ```kts
