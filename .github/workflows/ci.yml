@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck-and-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # memoryjs is a native Node module that only builds on Windows. We run CI
+      # there to exercise the full build path (tsc + tailwind).
+      - name: Install deps
+        run: npm install --ignore-scripts
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build Tailwind
+        run: npx tailwindcss -i ./public/global.css -o ./public/output.css --minify
+      - name: Compile TypeScript
+        run: npx tsc
