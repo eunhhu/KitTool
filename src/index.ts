@@ -1,7 +1,33 @@
-import { app, BrowserWindow, ipcMain, dialog, clipboard, globalShortcut } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, clipboard } from "electron";
 import path from "path";
-import { readFileSync, writeFileSync } from "fs";
-import { getProcesses, openProcess, readMemory, writeMemory, findPattern, ProcessObject, T_FLOAT, T_INT, T_DOUBLE, T_STRING, DataType } from "memoryjs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { getProcesses, openProcess, readMemory, writeMemory, ProcessObject } from "memoryjs";
+
+const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
+const DEFAULT_CONFIG: { [key: string]: any } = {
+  tick: 500,
+  macroTick: 1000 / 60,
+};
+
+function loadConfig(): { [key: string]: any } {
+  try {
+    if (!existsSync(CONFIG_FILE)) return { ...DEFAULT_CONFIG };
+    const raw = readFileSync(CONFIG_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_CONFIG, ...parsed };
+  } catch {
+    return { ...DEFAULT_CONFIG };
+  }
+}
+
+function saveConfig(c: { [key: string]: any }): void {
+  try {
+    mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
+    writeFileSync(CONFIG_FILE, JSON.stringify(c, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to persist config:", err);
+  }
+}
 
 ipcMain.on('readMemory', (e, addr, type, len) => {
   if(!prc) return;
@@ -83,8 +109,20 @@ const writeBuffer = (addr:number, buffer:string) => {
   }
 }
 
+// Register sync-callable handlers at module top level so they are ready the
+// moment the renderer process calls ipcRenderer.sendSync.
+ipcMain.on("getConfig", (e) => {
+  e.returnValue = loadConfig();
+});
+
 app.whenReady().then(async () => {
   const main = createWindow("main");
+
+  ipcMain.on("saveConfig", (_e, [newConfig]) => {
+    config = { ...DEFAULT_CONFIG, ...(newConfig || {}) };
+    saveConfig(config);
+    main.webContents.send("configSaved", config);
+  });
 
   const getObj = (name:string):any => {
     if (Object.keys(m_vars).includes(name)) {
@@ -200,9 +238,13 @@ app.whenReady().then(async () => {
     setTimeout(macroLoop, +config['macroTick']);
   }
 
-  ipcMain.on('init', (e, con:{[key:string]:any}) => {
+  ipcMain.on('init', (e, [con]) => {
     prc = null;
-    config = con;
+    // merge persisted config with incoming defaults so renderer values win for
+    // unset keys but saved values still apply.
+    const persisted = loadConfig();
+    config = { ...DEFAULT_CONFIG, ...(con || {}), ...persisted };
+    main.webContents.send('configSaved', config);
     macroLoop()
   })
 
@@ -223,20 +265,23 @@ app.whenReady().then(async () => {
 
   ipcMain.on('getProcesses', () => {
     main.webContents.send('getProcesses', getProcesses().filter(v => {
-      if(v.szExeFile.split('.')[1]){
-        return v.szExeFile.split('.')[1] == 'exe'
-      } else {
-        return false
-      }
+      // accept any executable that ends with .exe (supports names like "my.game.exe")
+      return typeof v.szExeFile === 'string' && v.szExeFile.toLowerCase().endsWith('.exe');
     }))
   })
 
   ipcMain.on('attach', (e, pid) => {
-    const tar = getProcesses().find(v => v.th32ProcessID == pid[0])
-    const pr = openProcess(tar.szExeFile);
-    if(!pr) return main.webContents.send('error', 'Process not found');
-    prc = pr;
-    main.webContents.send('attached', prc)
+    try {
+      const targetPid = +pid[0];
+      // memoryjs.openProcess also accepts a numeric PID; prefer it to name to
+      // avoid ambiguity when multiple processes share the same image name.
+      const pr = openProcess(targetPid as unknown as string);
+      if(!pr) return main.webContents.send('error', 'Process not found');
+      prc = pr;
+      main.webContents.send('attached', prc)
+    } catch (err) {
+      main.webContents.send('error', `Failed to open process: ${(err as Error).message ?? err}`)
+    }
   })
 
   ipcMain.on('detach', () => {
