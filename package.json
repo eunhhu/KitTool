@@ -5,13 +5,36 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder",
+    "build": "tsc && npx tailwindcss -i ./public/global.css -o ./public/output.css --minify",
+    "build:ts": "tsc",
+    "build:css": "npx tailwindcss -i ./public/global.css -o ./public/output.css --minify",
+    "dist": "npm run build && electron-builder",
     "dev": "concurrently \"tsc -w\" \"npx tailwindcss -i ./public/global.css -o ./public/output.css --watch\"",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "electron",
+    "memory",
+    "memoryjs",
+    "memory-scanner",
+    "game-hacking",
+    "reverse-engineering",
+    "windows"
+  ],
+  "author": "eunhhu",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eunhhu/KitTool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eunhhu/KitTool/issues"
+  },
+  "homepage": "https://github.com/eunhhu/KitTool#readme",
+  "os": [
+    "win32"
+  ],
   "devDependencies": {
     "@types/node": "^20.12.10",
     "autoprefixer": "^10.4.19",

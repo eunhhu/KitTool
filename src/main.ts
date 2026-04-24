@@ -102,7 +102,7 @@ function parseProperties(propsPart: string): { [key: string]: string } {
 
 const log = (...args: any[]) => ipcRenderer.send("log", args);
 const emit = (event: string, ...args: any[]):void => {ipcRenderer.send(event, args)};
-const emitSync = (event: string, ...args: any[]):any => {ipcRenderer.sendSync(event, args)};
+const emitSync = (event: string, ...args: any[]):any => ipcRenderer.sendSync(event, args);
 const on = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.on(event, callback)};
 const once = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.once(event, callback)};
 const off = (event: string, callback: (...args: any[]) => void):void => {ipcRenderer.off(event, callback)};
@@ -119,12 +119,18 @@ const debug = (obj:any) => {
     ($_('debug-logger') as HTMLTextAreaElement).value = JSON.stringify(obj, null, 2) + '\n';
 }
 
-let config:{[key:string]:any} = {
+let config:{[key:string]:any} = emitSync('getConfig') || {
     "tick": 500,
     "macroTick": 1000/60
 }
 
 emit('init', config);
+renderConfig();
+
+on('configSaved', (_e, saved:{[key:string]:any}) => {
+    config = saved;
+    renderConfig();
+});
 
 let states:{[key:string]:any} = {
     state : 'viewer',
@@ -266,7 +272,135 @@ $_('macro-code').onkeydown = e => {
     }
 }
 
-$_('macro-sort').onclick = e => {}
+$_('macro-sort').onclick = e => {
+    // Pretty-print and sort a macro script while preserving commands and event
+    // bodies. The sort order is: elements, vars, events (init, loop, click,
+    // keydown, keyup). Within each group entries are sorted alphabetically.
+    try {
+        const src = ($_('macro-code') as HTMLTextAreaElement).value;
+        const sorted = sortMacroScript(src);
+        states.macroText = sorted;
+        ($_('macro-code') as HTMLTextAreaElement).value = sorted;
+    } catch (err) {
+        ($_('macro-code') as HTMLTextAreaElement).classList.add('error');
+        console.error(err);
+    }
+}
+
+function sortMacroScript(src:string):string {
+    const lines = src.split('\n');
+    const elements:string[] = [];
+    const vars:string[] = [];
+    const events:{type:string;text:string}[] = [];
+    const orphan:string[] = [];
+
+    let i = 0;
+    while (i < lines.length) {
+        const raw = lines[i];
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) { i++; continue; }
+        const first = line.split(' ')[0];
+        if (first === 'element') {
+            elements.push(raw);
+            i++;
+        } else if (first === 'var') {
+            vars.push(raw);
+            i++;
+        } else if (first === 'event') {
+            // collect until matching closing brace at the correct depth
+            const type = (line.split(' ')[1] || '').trim();
+            const buf:string[] = [raw];
+            let depth = 0;
+            for (const ch of line) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+            i++;
+            while (i < lines.length && depth > 0) {
+                const l = lines[i];
+                buf.push(l);
+                for (const ch of l) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+                i++;
+            }
+            events.push({ type, text: buf.join('\n') });
+        } else {
+            orphan.push(raw);
+            i++;
+        }
+    }
+
+    const eventOrder = ['init', 'loop', 'click', 'keydown', 'keyup'];
+    events.sort((a, b) => {
+        const ai = eventOrder.indexOf(a.type);
+        const bi = eventOrder.indexOf(b.type);
+        const aRank = ai === -1 ? eventOrder.length : ai;
+        const bRank = bi === -1 ? eventOrder.length : bi;
+        if (aRank !== bRank) return aRank - bRank;
+        return a.text.localeCompare(b.text);
+    });
+    elements.sort((a, b) => a.localeCompare(b));
+    vars.sort((a, b) => a.localeCompare(b));
+
+    const parts:string[] = [];
+    if (elements.length) parts.push(elements.join('\n'));
+    if (vars.length) parts.push(vars.join('\n'));
+    if (events.length) parts.push(events.map(e => e.text).join('\n\n'));
+    if (orphan.length) parts.push(orphan.join('\n'));
+    return parts.join('\n\n');
+}
+
+// Config view
+function renderConfig(){
+    const root = $_('v-config');
+    if (!root) return;
+    root.innerHTML = '';
+    const box = create('div', '', 'w-full h-full max-w-xl flex flex-col items-stretch gap-2 p-4 overflow-auto');
+    const title = create('div', 'Configuration', 'text-lg font-semibold mb-2');
+    box.appendChild(title);
+
+    const rows:{label:string;key:string;step:number;min:number;hint:string}[] = [
+        { label: 'Viewer refresh (ms per tick)', key: 'tick', step: 10, min: 50, hint: 'How often the memory viewer refreshes. Lower is more responsive, higher saves CPU.' },
+        { label: 'Macro tick (ms per loop)', key: 'macroTick', step: 1, min: 1, hint: 'Interval of the macro "loop" event handler.' },
+    ];
+    const inputs: { [k: string]: HTMLInputElement } = {};
+    rows.forEach(r => {
+        const label = create('label', r.label, 'text-sm font-medium');
+        box.appendChild(label);
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.step = String(r.step);
+        inp.min = String(r.min);
+        inp.className = 'p-1 rounded-md w-full';
+        inp.value = String(config[r.key]);
+        inputs[r.key] = inp;
+        box.appendChild(inp);
+        const hint = create('div', r.hint, 'text-xs text-neutral-500 mb-2');
+        box.appendChild(hint);
+    });
+
+    const actions = create('div', '', 'flex flex-row gap-2 mt-2');
+    const save = create('button', 'Save', 'p-1 rounded-md pl-3 pr-3') as HTMLButtonElement;
+    const reset = create('button', 'Reset to defaults', 'p-1 rounded-md pl-3 pr-3') as HTMLButtonElement;
+    const status = create('div', '', 'text-xs text-neutral-600 ml-2 self-center');
+    save.onclick = () => {
+        const next:{[k:string]:any} = {};
+        Object.keys(inputs).forEach(k => {
+            const v = Number(inputs[k].value);
+            next[k] = Number.isFinite(v) && v > 0 ? v : config[k];
+        });
+        emit('saveConfig', next);
+        status.textContent = 'Saved.';
+        setTimeout(() => { status.textContent = ''; }, 1500);
+    };
+    reset.onclick = () => {
+        emit('saveConfig', { tick: 500, macroTick: 1000/60 });
+        status.textContent = 'Restored defaults.';
+        setTimeout(() => { status.textContent = ''; }, 1500);
+    };
+    actions.appendChild(save);
+    actions.appendChild(reset);
+    actions.appendChild(status);
+    box.appendChild(actions);
+
+    root.appendChild(box);
+}
 $_('macro-save').onclick = e => {
     emit('saveMacro', states.macroText);
 }
@@ -901,7 +1035,7 @@ function AddToLib(){
         const type = states["selectedType"];
         if(type != 'byte' && len != 1) {
             // push multiple values
-            const _byteLen = type == 'doube' ? 8 : 4;
+            const _byteLen = type == 'double' ? 8 : 4;
             const _count = Math.ceil(len / _byteLen);
             for(let i = 0; i < _count; i++){
                 states["lib"].push({addr: addr + i * _byteLen, type, len: 1});
@@ -914,7 +1048,7 @@ function AddToLib(){
 }
 
 $_('editor-addr').oninput = e => {
-    const _ = $_('editor-address') as HTMLInputElement;
+    const _ = $_('editor-addr') as HTMLInputElement;
     const _val = $_('editor-value') as HTMLInputElement;
     const _type = ($_('editor-type') as HTMLSelectElement).value;
     const _addr = parseInt(_.value, 16);
