@@ -1,52 +1,47 @@
-<div align="center">
-
 # KitTool
 
-**A lightweight Windows memory analyzer and macro runtime for running processes.**
+A lightweight Windows memory analyzer and macro runtime: attach to a running process, inspect and edit its memory from an Electron UI, and script reactive macros with the built-in KTS language.
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-30.x-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![memoryjs](https://img.shields.io/badge/memoryjs-3.4.0-339933)](https://github.com/Rob--/memoryjs)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4+-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-</div>
+**Status:** Maintained — feature-complete for its original scope (viewer, compare, macro, config); no automated tests.
 
----
+## Features
 
-## Overview
+- **Viewer** — attach to a process, scroll a hex dump, jump to an address or offset (simple `+ - * /` expressions accepted), switch byte / int32 / float / double interpretation, save addresses to a library, and write values back through an editor dialog.
+- **Compare** — collect addresses from the library, diff their bytes side-by-side with changed regions highlighted, and generate Frida-style `AA BB ?? ??` patterns from a selected range.
+- **Macro** — write KTS scripts in an in-app editor (bracket/quote auto-pairing), load/save `.kts` files, and run `init` / `loop` / `click` / `keydown` / `keyup` events that read, compare, and write memory.
+- **Config** — tune the viewer refresh rate and macro loop tick; values persist in Electron's `userData` directory.
+- **Hotkeys** — keyboard shortcuts for every common action (see below).
 
-KitTool attaches to a running Windows process and lets you inspect and modify
-its memory from a minimal Electron UI. On top of a standard memory viewer and
-pattern-finder it ships with **KTS** (Kit Tool Script) — a tiny scripting
-language for building reactive macros that read, compare, and write memory in
-response to UI and keyboard events.
+| Viewer | Compare | Macro |
+|---|---|---|
+| ![Viewer](./imgs/image.png) | ![Compare](./imgs/image2.png) | ![Macro](./imgs/image3.png) |
 
-## Feature summary
+## How it works
 
-| Area | What it does |
-|---|---|
-| **Viewer** | Attach to a process, scroll a hex dump, jump to an address or offset, switch between byte / int32 / float / double interpretation, save addresses to a library. |
-| **Compare** | Collect multiple addresses and diff their bytes side-by-side, highlight changing regions, generate Frida-style `AA BB ?? ??` patterns from a selection. |
-| **Macro** | Write KTS scripts in an in-app editor with bracket/quote auto-pairing, load and save `.kts` files, and execute init / loop / click / keydown / keyup events. |
-| **Config** | Tune the viewer refresh rate and the macro loop tick from the GUI; values persist in Electron's userData directory. |
-| **Hotkeys** | Keyboard shortcuts for every common action (see below). |
+- `src/index.ts` is the Electron main process. It owns the `memoryjs` process handle, exposes `readMemory` / `writeMemory` / `readBuffer` / `writeBuffer` and process-list IPC handlers, parses KTS scripts, and persists `config.json`.
+- `src/preload.ts` bridges `ipcRenderer` into the renderer as `emit` / `on` helpers.
+- `src/main.ts` is the renderer: it builds the viewer, library, compare, macro, and config panes in `public/main.html`, drives the refresh loop, and executes macro events against the live variable table.
+- Styling is Tailwind compiled from `public/global.css` into `public/output.css`.
 
-## Platform support
+## Tech stack
 
-KitTool depends on [`memoryjs`](https://github.com/Rob--/memoryjs), which is a
-native Node add-on that supports **Windows only**. The app also targets
-Windows in its Electron builder configuration. Cloning the repo on macOS or
-Linux works for editing and typechecking, but `npm install` and `electron .`
-will fail because the native module cannot be built or loaded.
+- Runtime/Language: Node.js, TypeScript 5.4, Electron 30
+- Memory access: [`memoryjs`](https://github.com/Rob--/memoryjs) (native add-on, Windows only)
+- UI: plain DOM + Tailwind CSS 3.4
+- Tooling: `tsc`, `concurrently`, `electron-builder` (NSIS installer), GitHub Actions CI (`.github/workflows/ci.yml`, Windows runner)
 
 ## Getting started
 
-### Prerequisites
+### Requirements
 
-- Windows 10 or later (x64)
-- [Node.js](https://nodejs.org/) 18 or newer and `npm`
-- Visual Studio Build Tools (required by `memoryjs` at install time)
+- Windows 10 or later (x64) — `memoryjs` does not build or load on macOS/Linux
+- Node.js 18+ and npm
+- Visual Studio Build Tools (needed to compile `memoryjs` on install)
 
 ### Install
 
@@ -56,211 +51,68 @@ cd KitTool
 npm install
 ```
 
-### Build
-
-Compile TypeScript and the Tailwind stylesheet into `dist/` and
-`public/output.css` respectively:
-
-```bash
-npm run build
-```
-
 ### Run
 
 ```bash
-npm start
+npm run build      # tsc + tailwind -> dist/, public/output.css
+npm start          # electron .
+npm run dev        # tsc --watch + tailwind --watch (run `npm start` in another terminal)
+npm run typecheck  # tsc --noEmit
+npm run dist       # build + electron-builder -> NSIS installer under build/
 ```
-
-### Develop
-
-`npm run dev` launches `tsc --watch` and the Tailwind watcher in parallel.
-Run `npm start` in a second terminal to open Electron against the latest
-build.
-
-### Package
-
-```bash
-npm run dist
-```
-
-This produces an NSIS installer under `build/` using the settings in
-`package.json > build`.
 
 ## Using the app
 
-### Attach to a process
+1. Click **Attach** (<kbd>Alt</kbd>+<kbd>A</kbd>), filter the process list by name, and double-click a process.
+2. In **Viewer**, scroll the hex dump, type a hex address into **Address** to jump, and press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save the selection to the library. Double-click a library entry (or <kbd>Enter</kbd>) to open the value editor and write a new value.
+3. In **Compare**, press <kbd>Ctrl</kbd>+<kbd>T</kbd> on library entries to add them, drag a range, and click **Make Pattern**.
+4. In **Macro**, write a KTS script and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (**Init**). **Sort** pretty-prints and reorders declarations (elements → vars → events); **Save**/**Load** use plain-text `.kts` files.
+5. Click **Detach** (<kbd>Alt</kbd>+<kbd>D</kbd>) to release the handle.
 
-1. Click **Attach** (or press <kbd>Alt</kbd>+<kbd>A</kbd>).
-2. Type part of the target's filename into the search box to filter the list.
-3. Double-click the process, or select it and click **Attach**.
-
-Click **Detach** (<kbd>Alt</kbd>+<kbd>D</kbd>) when you are done to release
-the handle.
-
-### Viewer
-
-- Scroll the hex dump with the mouse wheel to change the current offset.
-- Type a hex address (e.g. `7FF74E000000`) into the **Address** field to jump;
-  the field accepts simple `+ - * /` expressions.
-- Use **Save Current Address** (<kbd>Ctrl</kbd>+<kbd>S</kbd>) to push the
-  selection into the local library on the right.
-- Double-click an item in the library (or press <kbd>Enter</kbd>) to open the
-  value editor and write a new value back into memory.
-
-### Compare
-
-- From the library, press <kbd>Ctrl</kbd>+<kbd>T</kbd> to add the selected
-  addresses to the comparison set.
-- Click an entry in **Compares** to inspect it. Bytes that differ between
-  entries are highlighted.
-- Drag a range and press **Make Pattern** to generate a Frida-style pattern
-  (`A3 B1 ?? ?? 0F`) that matches the shared bytes.
-
-### Macro editor
-
-- The left half is the KTS script. The right half shows the dynamically
-  generated UI elements and the live variable table.
-- Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to **Init** (re-parse and apply) the
-  script.
-- The **Sort** button pretty-prints the script and groups declarations in a
-  canonical order: elements → vars → events.
-- **Save** and **Load** read/write plain text `.kts` files.
-
-### Config
-
-The **Config** tab exposes:
-
-- **Viewer refresh** — how often the viewer re-reads memory (milliseconds).
-- **Macro tick** — how often the KTS `loop` event fires (milliseconds).
-
-Values are persisted to `config.json` inside Electron's userData directory
-and re-applied on the next launch.
-
-## Hotkey reference
+### Hotkeys
 
 | Scope | Keys | Action |
 |---|---|---|
-| Global | <kbd>Alt</kbd>+<kbd>A</kbd> | Open the attach dialog |
-| Global | <kbd>Alt</kbd>+<kbd>D</kbd> | Detach from the current process |
+| Global | <kbd>Alt</kbd>+<kbd>A</kbd> / <kbd>Alt</kbd>+<kbd>D</kbd> | Attach dialog / detach |
 | Global | <kbd>Alt</kbd>+<kbd>1</kbd>..<kbd>6</kbd> | Switch tab (Viewer / Compare / Macro / Config / Hotkeys / Debug) |
-| Viewer | <kbd>Ctrl</kbd>+<kbd>1</kbd>..<kbd>4</kbd> | Change view type (byte / int / float / double) |
-| Viewer | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save selection to library |
-| Viewer | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copy selected bytes to clipboard |
-| Library | <kbd>↑</kbd> / <kbd>↓</kbd> | Move selection |
-| Library | <kbd>Enter</kbd> | Open the value editor |
-| Library | <kbd>Delete</kbd> | Remove selected entries |
-| Library | <kbd>Ctrl</kbd>+<kbd>G</kbd> | Go to the selected address in the viewer |
-| Library | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Add selected library entries to **Compares** |
-| Editor | <kbd>Enter</kbd> / <kbd>Ctrl</kbd>+<kbd>W</kbd> | Write the new value |
-| Editor | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save the new value to the library |
+| Viewer | <kbd>Ctrl</kbd>+<kbd>1</kbd>..<kbd>4</kbd> | View type (byte / int / float / double) |
+| Viewer | <kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> | Save selection to library / copy bytes |
+| Library | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> <kbd>Delete</kbd> | Move / open editor / remove |
+| Library | <kbd>Ctrl</kbd>+<kbd>G</kbd> / <kbd>Ctrl</kbd>+<kbd>T</kbd> | Go to address / add to Compares |
+| Editor | <kbd>Enter</kbd> or <kbd>Ctrl</kbd>+<kbd>W</kbd> / <kbd>Ctrl</kbd>+<kbd>S</kbd> | Write value / save to library |
 | Macro editor | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Init the macro |
 
 ## KTS language reference
 
-A KTS script is a small list of declarations. Lines starting with `#` are
-comments. Whitespace is only significant between tokens.
-
-### Elements
-
-Declare UI elements that show up in the macro view on the right-hand side:
+A KTS script is a list of declarations; lines starting with `#` are comments.
 
 ```kts
-element <type>:<id> value:"..." style:"..."
+element <type>:<id> value:"..." style:"..."   # type: text | input | button
+var <name> = <value>                           # evaluated as a JavaScript literal
+event <type> <target?> { ... }                 # type: init | loop | click | keydown | keyup
 ```
 
-- `type` — `text`, `input`, or `button`.
-- `id` — a unique identifier (letters, digits, `-`, `_`).
-- `value` — initial content.
-- `style` — a CSS string applied inline.
+Commands inside an event body:
 
 ```kts
-element button:b-read   value:"Read Value"  style:"color:red;"
-element text:score      value:"0"           style:"font-size:1.5rem;"
-element input:address   value:"7FF74E000000"
+change <name> = <evalValue>                    # set a var or an input/text element value
+write  <address> = <evalValue> as <valueType>  # valueType: byte | int | float | double
+if <evalValue> <op> <evalValue> { ... }        # op: == != >= <= > <
 ```
 
-### Variables
-
-```kts
-var <name> = <value>
-```
-
-Variables are evaluated as JavaScript literals so `var x = 0x2A` and
-`var s = "hello"` both work. Use the `change` command inside an event to
-mutate them at runtime.
-
-### Events
-
-```kts
-event <type> <target?> {
-  <commands, if-conditions>
-}
-```
-
-- `type` — one of `init`, `loop`, `click`, `keydown`, `keyup`.
-- `target` — the id of the bound element (or a keycode for key events).
-  Omit for `loop`.
-
-### Commands
-
-Two commands are available inside an event body:
-
-```kts
-change <name> = <evalValue>
-write  <address> = <evalValue> as <valueType>
-```
-
-- `change` — write to a variable or the value of an `input`/`text` element.
-- `write`  — write the evaluated value to the given memory address. Supported
-  `valueType`s are `byte`, `int`, `float`, and `double`.
-
-### If conditions
-
-```kts
-if <evalValue> <op> <evalValue> {
-  <commands>
-}
-```
-
-Supported operators: `==  !=  >=  <=  >  <`.
-
-### Evaluated values
-
-An **evaluated value** is either a plain JavaScript expression (which runs in
-an isolated `new Function(...)` sandbox) or a template string that
-interpolates `{...}` sections. Inside an evaluated value you can call the
-built-in modifiers below. Modifiers can be chained by concatenation:
-`fi(x)` reads memory at the integer parsed from the hex string `x` as a
-float.
+An *evaluated value* is a JavaScript expression (run inside an isolated `new Function(...)`) or a template string with `{...}` sections. Built-in modifiers can be chained by concatenation (`fi(x)` = read a float at the address parsed from hex string `x`):
 
 | Modifier | Meaning |
 |---|---|
-| `s` | `String(v)` |
-| `n` | `Number(v)` |
-| `b` | `v === 'true'` |
-| `x` | `v.toString(16)` |
-| `i` | `parseInt(v, 16)` |
-| `*` | look up variable or element by id |
-| `1` | read 1 byte at address |
-| `4` | read int32 at address |
-| `f` | read float at address |
-| `d` | read double at address |
+| `s` / `n` / `b` | `String(v)` / `Number(v)` / `v === 'true'` |
+| `x` / `i` | `v.toString(16)` / `parseInt(v, 16)` |
+| `*` | look up a variable or element by id |
+| `1` / `4` / `f` / `d` | read 1 byte / int32 / float / double at address |
+
+Example:
 
 ```kts
-"Player Position : {fi('7FF74E000000')}, {f(0x7FF74E000A30)}"
-# "Player Position : 43.618, 53.642"
-
-x(0xA84B00)
-# "a84b00"
-
-s(n('30') + i('A')) + 22
-# "4022"
-```
-
-### Full example
-
-```kts
-element text:score  value:"0"
+element text:score   value:"0"
 element button:reset value:"Reset"
 
 var base = 0x7FF74E000000
@@ -274,38 +126,28 @@ event click reset {
 }
 ```
 
+## Project structure
+
+```text
+src/
+  index.ts        Electron main process, memoryjs access, IPC handlers, KTS parser, config persistence
+  main.ts         renderer: UI panes, refresh loop, macro runtime
+  preload.ts      ipcRenderer bridge
+  types.d.ts      shared types (macro AST, value types)
+  memoryjs.d.ts   memoryjs type declarations
+public/           main.html, Tailwind source (global.css), compiled output.css, icons
+imgs/             screenshots used in this README
+.github/workflows/ci.yml  typecheck + build on windows-latest
+```
+
 ## Configuration
 
-Runtime config is persisted to `config.json` inside Electron's
-`app.getPath('userData')` directory. Delete the file to fall back to the
-built-in defaults (viewer tick `500 ms`, macro tick `1000 / 60 ms`).
-
-## Project layout
-
-```
-KitTool/
-├─ src/
-│  ├─ index.ts        # Electron main process + IPC handlers
-│  ├─ main.ts         # Renderer entry point (UI, KTS runtime)
-│  ├─ preload.ts      # Preload script
-│  ├─ types.d.ts      # Shared TypeScript types
-│  └─ memoryjs.d.ts   # memoryjs type declarations
-├─ public/
-│  ├─ main.html       # Main window markup
-│  ├─ global.css      # Tailwind source
-│  └─ favicon.ico
-└─ package.json
-```
+No environment variables are read. Runtime settings (viewer refresh interval, macro tick) are stored in `config.json` under Electron's `app.getPath('userData')`; delete the file to restore the defaults (viewer `500 ms`, macro tick `1000 / 60 ms`).
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, please:
-
-1. Run `npm run typecheck` to make sure TypeScript is happy.
-2. If you change any CSS classes, run `npm run build:css` to regenerate
-   `public/output.css`.
+Run `npm run typecheck` before opening a PR, and regenerate `public/output.css` with `npm run build:css` if you change CSS classes.
 
 ## License
 
-KitTool is released under the [ISC License](LICENSE). It is intended for
-research and educational use on software you own or are authorized to modify.
+[ISC](LICENSE). Intended for research and educational use on software you own or are authorized to modify.
